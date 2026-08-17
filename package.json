@@ -1,0 +1,23 @@
+{
+  "name": "qingpu-hydrogen-opportunity-agent",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @qingpu/contracts build && pnpm --filter @qingpu/domain build && concurrently -n api,web -c cyan,green \"pnpm --filter @qingpu/api dev\" \"pnpm --filter @qingpu/web dev\"",
+    "dev:api": "pnpm --filter @qingpu/api dev",
+    "dev:web": "pnpm --filter @qingpu/web dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.1",
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.2"
+  }
+}
