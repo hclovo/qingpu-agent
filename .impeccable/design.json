@@ -1,0 +1,318 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-18T00:00:00.000Z",
+  "title": "Design System: 氢擎 Agent 工作台",
+  "extensions": {
+    "colorMeta": {
+      "action": {
+        "role": "primary",
+        "displayName": "深潜青 Action Teal",
+        "canonical": "oklch(46% 0.085 190)",
+        "tonalRamp": [
+          "oklch(20% 0.04 190)",
+          "oklch(30% 0.06 190)",
+          "oklch(40% 0.08 190)",
+          "oklch(46% 0.085 190)",
+          "oklch(58% 0.08 190)",
+          "oklch(72% 0.06 190)",
+          "oklch(86% 0.04 190)",
+          "oklch(95.5% 0.025 190)"
+        ]
+      },
+      "confirm": {
+        "role": "secondary",
+        "displayName": "锻铜 Forged Copper",
+        "canonical": "oklch(48% 0.12 48)",
+        "tonalRamp": [
+          "oklch(22% 0.06 48)",
+          "oklch(32% 0.09 48)",
+          "oklch(40% 0.11 48)",
+          "oklch(48% 0.12 48)",
+          "oklch(60% 0.13 48)",
+          "oklch(74% 0.09 50)",
+          "oklch(86% 0.06 55)",
+          "oklch(96% 0.03 55)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "警示赤 Alert Vermilion",
+        "canonical": "oklch(47% 0.16 25)",
+        "tonalRamp": [
+          "oklch(22% 0.08 25)",
+          "oklch(31% 0.12 25)",
+          "oklch(39% 0.15 25)",
+          "oklch(47% 0.16 25)",
+          "oklch(60% 0.16 25)",
+          "oklch(74% 0.11 25)",
+          "oklch(86% 0.07 25)",
+          "oklch(96% 0.03 25)"
+        ]
+      },
+      "focus-surface": {
+        "role": "tertiary",
+        "displayName": "深井 Focus Surface",
+        "canonical": "oklch(26% 0.032 234)",
+        "tonalRamp": [
+          "oklch(15% 0.024 236)",
+          "oklch(21% 0.028 236)",
+          "oklch(26% 0.032 234)",
+          "oklch(34% 0.034 232)",
+          "oklch(48% 0.03 230)",
+          "oklch(64% 0.022 228)",
+          "oklch(80% 0.014 226)",
+          "oklch(93% 0.01 225)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "墨 Ink",
+        "canonical": "oklch(24% 0.02 235)",
+        "tonalRamp": [
+          "oklch(18% 0.018 236)",
+          "oklch(24% 0.02 235)",
+          "oklch(35% 0.019 234)",
+          "oklch(46% 0.018 232)",
+          "oklch(54% 0.016 230)",
+          "oklch(72% 0.012 228)",
+          "oklch(84% 0.01 225)",
+          "oklch(90% 0.008 225)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "纸 Surface",
+        "canonical": "oklch(99.2% 0.002 225)",
+        "tonalRamp": [
+          "oklch(21% 0.028 236)",
+          "oklch(34% 0.02 232)",
+          "oklch(54% 0.016 230)",
+          "oklch(72% 0.012 228)",
+          "oklch(84% 0.01 225)",
+          "oklch(90% 0.008 225)",
+          "oklch(96.8% 0.006 225)",
+          "oklch(99.2% 0.002 225)"
+        ]
+      },
+      "border-control": {
+        "role": "neutral",
+        "displayName": "控件线 Border Control",
+        "canonical": "oklch(64% 0.014 225)",
+        "tonalRamp": [
+          "oklch(24% 0.02 235)",
+          "oklch(46% 0.018 232)",
+          "oklch(54% 0.016 230)",
+          "oklch(64% 0.014 225)",
+          "oklch(74% 0.012 225)",
+          "oklch(84% 0.01 225)",
+          "oklch(90% 0.008 225)",
+          "oklch(96.8% 0.006 225)"
+        ]
+      },
+      "role-supplier": {
+        "role": "tertiary",
+        "displayName": "藏钢蓝 Steel Indigo",
+        "canonical": "oklch(46% 0.09 245)",
+        "tonalRamp": [
+          "oklch(20% 0.05 245)",
+          "oklch(30% 0.07 245)",
+          "oklch(38% 0.085 245)",
+          "oklch(46% 0.09 245)",
+          "oklch(58% 0.09 245)",
+          "oklch(73% 0.06 245)",
+          "oklch(86% 0.04 245)",
+          "oklch(96% 0.02 245)"
+        ]
+      },
+      "role-partner": {
+        "role": "tertiary",
+        "displayName": "紫岩 Slate Violet",
+        "canonical": "oklch(47% 0.11 300)",
+        "tonalRamp": [
+          "oklch(21% 0.06 300)",
+          "oklch(30% 0.085 300)",
+          "oklch(39% 0.1 300)",
+          "oklch(47% 0.11 300)",
+          "oklch(59% 0.11 300)",
+          "oklch(74% 0.07 300)",
+          "oklch(87% 0.045 300)",
+          "oklch(96% 0.022 300)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display 28", "purpose": "页面 h1，每页仅一个。固定字号，禁止 clamp。" },
+      "headline": { "displayName": "Headline 20", "purpose": "抽屉标题、结论区标题、商机详情主标题。" },
+      "title": { "displayName": "Title 16", "purpose": "卡片与区块标题。" },
+      "body": { "displayName": "Body 14", "purpose": "正文与表格单元格，行高 1.7，散文行长 65 到 75 字符。" },
+      "label": { "displayName": "Label 12", "purpose": "字段标签、徽标、元信息、按钮文字。全系统字号地板。" },
+      "eyebrow": { "displayName": "Eyebrow 12", "purpose": "区块眉标与导航分组标签，大写加 0.12em 字距。" },
+      "metric": { "displayName": "Metric 28", "purpose": "指标读数与评分，必须 tabular-nums。大评分可到 34px。" }
+    },
+    "shadows": [
+      {
+        "name": "pop",
+        "value": "0 4px 12px oklch(24% 0.02 235 / 0.08)",
+        "purpose": "hover 抬起、下拉浮层、可点击行的悬浮反馈。静止态不得使用。"
+      },
+      {
+        "name": "overlay",
+        "value": "0 24px 48px oklch(21% 0.028 236 / 0.18)",
+        "purpose": "抽屉与模态。唯一允许的重阴影，因为它必须切断与背景的关系。"
+      }
+    ],
+    "motion": [
+      { "name": "ease-out-quart", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "全部状态切换的默认缓动。无回弹，无弹性。" },
+      { "name": "duration-fast", "value": "150ms", "purpose": "颜色、边框、透明度等即时反馈。" },
+      { "name": "duration-base", "value": "220ms", "purpose": "抽屉滑入、导航展开等位移类过渡。" }
+    ],
+    "breakpoints": [
+      { "name": "wide", "value": "1180px" },
+      { "name": "tablet", "value": "900px" },
+      { "name": "mobile", "value": "640px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "主动作。纯色深潜青，禁止渐变与 hover 位移。",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/></svg>发送给 Agent</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border: 1px solid transparent; border-radius: var(--radius-sm, 6px); background: var(--action, oklch(46% 0.085 190)); color: var(--surface, oklch(99.2% 0.002 225)); font-size: 12px; font-weight: 600; cursor: pointer; transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-primary:hover { background: var(--action-strong, oklch(40% 0.08 190)); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(46% 0.085 190 / 0.3); } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Confirm Button",
+      "kind": "button",
+      "refersTo": "button-confirm",
+      "description": "需人工确认的动作（外发、报价、技术承诺）。铜色描边而非实底，让人停顿。",
+      "html": "<button class=\"ds-btn-confirm\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/><path d=\"M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z\"/></svg>确认后发送</button>",
+      "css": ".ds-btn-confirm { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border: 1px solid oklch(86% 0.06 55); border-radius: 6px; background: oklch(96% 0.03 55); color: oklch(48% 0.12 48); font-size: 12px; font-weight: 600; cursor: pointer; transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-confirm:hover { background: oklch(93% 0.045 55); } .ds-btn-confirm:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(48% 0.12 48 / 0.28); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "静止无阴影，1 px 完整边框加明度分层。禁止嵌套。",
+      "html": "<article class=\"ds-card\"><div class=\"ds-card-eyebrow\">商机评分</div><h3 class=\"ds-card-title\">港口重卡替换意向</h3><p class=\"ds-card-body\">来源：氢璞 2025 宣传册 · 第 12 页 · 公开资料</p></article>",
+      "css": ".ds-card { padding: 24px; border: 1px solid oklch(90% 0.008 225); border-radius: 14px; background: oklch(99.2% 0.002 225); } .ds-card-eyebrow { color: oklch(46% 0.085 190); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; } .ds-card-title { margin: 10px 0 0; color: oklch(24% 0.02 235); font-size: 16px; font-weight: 700; line-height: 1.45; } .ds-card-body { margin: 8px 0 0; color: oklch(54% 0.016 230); font-size: 12px; line-height: 1.6; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "控件边框专用色，实测 3.27:1 满足 WCAG 1.4.11。focus 给 3 px 青色环。",
+      "html": "<label class=\"ds-field\"><span>企业名称</span><input class=\"ds-input\" placeholder=\"输入企业全称\" /></label>",
+      "css": ".ds-field { display: block; } .ds-field > span { display: block; margin-bottom: 8px; color: oklch(46% 0.018 232); font-size: 12px; font-weight: 600; } .ds-input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid oklch(64% 0.014 225); border-radius: 6px; background: oklch(99.2% 0.002 225); color: oklch(24% 0.02 235); font-size: 14px; transition: border-color 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-input::placeholder { color: oklch(54% 0.016 230); } .ds-input:focus { outline: none; border-color: oklch(46% 0.085 190); box-shadow: 0 0 0 3px oklch(46% 0.085 190 / 0.3); }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "badge-status",
+      "description": "状态徽标。永远带文字，颜色只是第二通道。",
+      "html": "<span class=\"ds-chip\">待核实</span><span class=\"ds-chip ds-chip-confirm\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/><circle cx=\"12\" cy=\"12\" r=\"10\"/></svg>需人工确认</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 5px; margin-right: 8px; padding: 4px 10px; border-radius: 999px; background: oklch(97.8% 0.005 225); color: oklch(46% 0.018 232); font-size: 12px; font-weight: 600; white-space: nowrap; } .ds-chip-confirm { background: oklch(96% 0.03 55); color: oklch(48% 0.12 48); }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "焦点表面上的导航。激活态用整块底色变化加图标染色，禁止左侧色条。",
+      "html": "<div class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M9 3v18\"/></svg>关系中心</a><a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M12 2v4\"/></svg>商机雷达</a></div>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; background: oklch(21% 0.028 236); } .ds-nav-item { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; color: oklch(76% 0.016 222); font-size: 13px; font-weight: 600; text-decoration: none; transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1), color 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-nav-item:hover { background: oklch(93% 0.01 225 / 0.07); color: oklch(93% 0.01 225); } .ds-nav-item-active { background: oklch(93% 0.01 225 / 0.13); color: oklch(93% 0.01 225); } .ds-nav-item-active svg { color: oklch(78% 0.09 190); }"
+    },
+    {
+      "name": "Readout Strip",
+      "kind": "custom",
+      "refersTo": "readout-strip",
+      "description": "替代四张相同指标卡。一条纸色容器纵向分格，无彩色图标底片，读数 tabular-nums。",
+      "html": "<div class=\"ds-readout\"><div class=\"ds-readout-cell\"><span>在跟商机</span><strong>128</strong><small>其中 12 条今日到期</small></div><div class=\"ds-readout-cell\"><span>待人工确认</span><strong>7</strong><small>含 2 条报价承诺</small></div><div class=\"ds-readout-cell\"><span>沉默关系</span><strong>23</strong><small>超过 30 天未联系</small></div></div>",
+      "css": ".ds-readout { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid oklch(90% 0.008 225); border-radius: 14px; background: oklch(99.2% 0.002 225); overflow: hidden; } .ds-readout-cell { display: flex; flex-direction: column; gap: 6px; padding: 20px 24px; border-left: 1px solid oklch(90% 0.008 225); } .ds-readout-cell:first-child { border-left: 0; } .ds-readout-cell span { color: oklch(46% 0.018 232); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; } .ds-readout-cell strong { color: oklch(24% 0.02 235); font-size: 28px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } .ds-readout-cell small { color: oklch(54% 0.016 230); font-size: 12px; }"
+    },
+    {
+      "name": "Evidence Row",
+      "kind": "custom",
+      "refersTo": "evidence-row",
+      "description": "研判台的核心组件。序号章加标题摘要，加一条永远存在的来源脚注。",
+      "html": "<article class=\"ds-evidence\"><span class=\"ds-evidence-index\">03</span><div><h4>港口方公开招标绿色重卡运力</h4><p>招标公告提到 2026 年前完成 120 台燃油重卡替换，功率区间与 ST 系列电堆匹配。</p><footer>氢璞商机判断文档 · 案例 4 · 2025-10 · <em>脱敏</em></footer></div></article>",
+      "css": ".ds-evidence { display: flex; gap: 14px; padding: 16px 0; border-top: 1px solid oklch(90% 0.008 225); } .ds-evidence-index { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 24px; border-radius: 6px; background: oklch(97.8% 0.005 225); color: oklch(24% 0.02 235); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; } .ds-evidence h4 { margin: 2px 0 6px; color: oklch(24% 0.02 235); font-size: 14px; font-weight: 700; } .ds-evidence p { margin: 0 0 8px; color: oklch(46% 0.018 232); font-size: 13px; line-height: 1.65; } .ds-evidence footer { color: oklch(54% 0.016 230); font-size: 12px; } .ds-evidence footer em { padding: 2px 6px; border-radius: 4px; background: oklch(96% 0.03 55); color: oklch(48% 0.12 48); font-style: normal; font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "研判台 / The Analyst's Desk",
+    "overview": "这是一张摆满证据的工作桌，不是一块发光的仪表屏。桌面本身安静、明亮、无装饰，所有视觉重量都给到摊开的材料：维度得分、来源出处、资料时间、风险提示。用户在这张桌上做的事是「核对后决定」，所以界面的每一处都要经得起被追问一句「这个数字哪来的」。\n\n系统的物理场景是硬约束：明亮会议室里的投影或大屏，观看距离两到三米。这决定了主表面必须是亮色、高对比，正文不得低于 12 px，柔和阴影不承担任何结构职责。深色只作为焦点表面出现在侧边导航和结论区，绝不铺满全屏。\n\n系统明确拒绝三样东西：环保绿能源官网那套绿刷满、渐变按钮、叶子图标的公关观感；通用 SaaS 落地页的渐变文字与大数字 hero 指标区；旧式 ERP 后台的低对比密表格。青色是既有识别，但它在这套系统里被降级为一种职责，不是一种装饰。",
+    "keyCharacteristics": [
+      "亮色主表面，深色仅用于焦点表面（侧栏、结论区）",
+      "平面优先：结构靠 1 px 边框和三级明度分层，不靠阴影",
+      "双语义色：青 = 可以推进，铜橙 = 需要人确认",
+      "12 px 字号地板，舒展行高，两米外可读优先于信息密度",
+      "数字一律 tabular-nums，同列数字必须对齐",
+      "任何状态都有文字或形状标识，颜色只是第二通道"
+    ],
+    "rules": [
+      {
+        "name": "The Two Voices Rule",
+        "body": "这套界面只有两个有意义的颜色：青说「可以推进」，铜说「需要人确认」。任何一个色块出现之前先回答它在说哪一句；两句都不是，它就必须是中性灰。",
+        "section": "colors"
+      },
+      {
+        "name": "The No Decorative Tint Rule",
+        "body": "禁止把青色当图标底色批量铺开。图标容器默认是中性灰底；只有当图标本身表示动作或语义状态时才染色。青色总面积不超过任一屏的 10%。",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Pure Rule",
+        "body": "禁止 #fff 和 #000。所有中性色都向 hue 225 偏移（chroma 0.002 到 0.02），桌面才有统一的冷灰体温。",
+        "section": "colors"
+      },
+      {
+        "name": "The 12px Floor Rule",
+        "body": "任何文字不得小于 12 px。绝对禁止 6 到 11 px。旧版有 92 处 8 px 及以下的文字，那不是「紧凑」，那是投影上不可读。",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "所有数字（评分、金额、功率、日期、计数）必须 tabular-nums。同列数字不对齐的表格看起来就是不可靠的。",
+        "section": "typography"
+      },
+      {
+        "name": "The One Display Rule",
+        "body": "每页只有一个 28 px 标题。第二个 28 px 的东西必须是指标读数，不是另一个标题。",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "阴影是状态的回应，不是卡片的默认属性。如果一个元素静止时就带阴影，删掉它，改用边框。",
+        "section": "elevation"
+      },
+      {
+        "name": "The Projector Test",
+        "body": "判断层次是否成立：把界面想象成投影在有环境光的墙上，阴影全部消失。如果此时看不出卡片边界或区块归属，层次就是错的。",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do 把所有颜色、字号、间距、圆角、阴影、动效写成 :root 上的 token，页面 CSS 只引用 var(--*)。旧版 325 个散落 hex 是这次重构的直接起因。",
+      "Do 让青色只表示动作、铜色只表示需人工确认（The Two Voices Rule）。",
+      "Do 给每个状态配文字或图标，颜色只作第二通道。关系角色、商机阶段、评级、数据来源四类标识全部适用。",
+      "Do 用 12 px 作为字号地板，正文 14 px、行高 1.7。",
+      "Do 所有数字加 font-variant-numeric: tabular-nums。",
+      "Do 用 1 px 完整边框加明度分层建立结构，静止态不给阴影（The Flat-At-Rest Rule）。",
+      "Do 给每个可交互元素完整的七态：default、hover、focus-visible、active、disabled、loading、error。",
+      "Do 用 150 到 220 ms 的缓出曲线（cubic-bezier(0.25, 1, 0.5, 1)），并在 prefers-reduced-motion 下全部关闭。",
+      "Do 用中性灰做图标容器底色，除非图标本身表达语义。"
+    ],
+    "donts": [
+      "Don't 做成环保绿能源官网：不要把青绿刷满、不要渐变按钮、不要叶子或地球图标、不要「清洁未来」式的公关插画。",
+      "Don't 做成通用 SaaS 落地页：禁止 background-clip: text 渐变文字，禁止大数字加小标签的 hero 指标区，禁止一模一样的卡片网格。",
+      "Don't 做成旧式 ERP 后台：禁止低对比密表格，禁止 11 px 以下正文，禁止把每个元素都包进边框。",
+      "Don't 使用超过 1 px 的左/右侧彩色条纹（border-left: 3px solid ...、box-shadow: inset 2px 0 ...）。旧版引文块和导航激活态都犯过，已改为完整边框加底色。",
+      "Don't 用渐变。按钮、聊天气泡、侧栏、hero 区、进度条一律纯色。审计口径：CSS 里出现 linear-gradient 或 radial-gradient 就是错的，没有例外。",
+      "Don't 用毛玻璃（backdrop-filter: blur()）做粘性头部或遮罩。投影下它只会让文字变糊。",
+      "Don't 把模态当第一反应。抽屉与就地展开优先。",
+      "Don't 用装饰性动效。位移、弹跳、缩放只在传达状态时使用；按钮 hover 不做 translateY。",
+      "Don't 把 --line（装饰线）用在输入框上，也不要把 --border-control 用在分割线上。两者对比度职责不同。",
+      "Don't 让任何数字、评级或建议脱离它的来源出现。审计口径：界面上任何一个分数，两次点击内必须能看到它的维度拆解和资料来源。"
+    ]
+  }
+}
