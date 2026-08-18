@@ -1,8 +1,8 @@
 import type { CreateKnowledgeInput, KnowledgeItem } from '@qingpu/contracts'
-import type { MemoryStore } from '../store/memory-store.js'
+import type { BusinessStore } from '../store/store.js'
 
 export class KnowledgeService {
-  constructor(private readonly store: MemoryStore) {}
+  constructor(private readonly store: BusinessStore) {}
 
   list(query?: string, status?: KnowledgeItem['status']) {
     return this.store.listKnowledge(query, status)

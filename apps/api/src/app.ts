@@ -15,6 +15,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { ZodError } from 'zod'
 import { BusinessService } from './services/business-service.js'
+import { DuplicateOpportunityError } from './store/store.js'
 
 type Variables = { requestId: string }
 
@@ -87,14 +88,17 @@ export function createApp(service = new BusinessService()) {
     if (error instanceof RequestBodyError) {
       return c.json(errorBody(requestId, error.code, error.message), 400)
     }
+    if (error instanceof DuplicateOpportunityError) {
+      return c.json(errorBody(requestId, error.code, error.message), 409)
+    }
     return c.json(errorBody(requestId, 'INTERNAL_ERROR', '服务暂时不可用，请稍后重试'), 500)
   })
 
   app.notFound((c) => c.json(errorBody(c.get('requestId') || randomUUID(), 'NOT_FOUND', '请求的资源不存在'), 404))
 
   app.get('/api/health', (c) => c.json({ ...service.health(), requestId: c.get('requestId') }))
-  app.get('/api/dashboard', (c) => {
-    const data = service.dashboard()
+  app.get('/api/dashboard', async (c) => {
+    const data = await service.dashboard()
     return c.json({ ...data, topOpportunities: data.topOpportunities.map(presentOpportunity) })
   })
 
@@ -102,26 +106,26 @@ export function createApp(service = new BusinessService()) {
     const input = AgentChatInputSchema.parse(await jsonBody(c.req.raw))
     return c.json(await service.chat(input))
   })
-  app.get('/api/agent/briefing', (c) => c.json(service.briefing()))
+  app.get('/api/agent/briefing', async (c) => c.json(await service.briefing()))
 
-  app.get('/api/relationships', (c) => {
+  app.get('/api/relationships', async (c) => {
     const role = c.req.query('role') ? RelationshipRoleSchema.parse(c.req.query('role')) : undefined
-    return c.json(service.store.listRelationships(role))
+    return c.json(await service.store.listRelationships(role))
   })
-  app.get('/api/relationships/:id', (c) => {
-    const item = service.store.getRelationship(c.req.param('id'))
+  app.get('/api/relationships/:id', async (c) => {
+    const item = await service.store.getRelationship(c.req.param('id'))
     return item ? c.json(item) : c.json(errorBody(c.get('requestId'), 'NOT_FOUND', '关系对象不存在'), 404)
   })
   app.post('/api/relationships/:id/touchpoints', async (c) => {
     const body = await jsonBody(c.req.raw)
     const input = CreateTouchpointInputSchema.parse({ ...body, outcome: String(body.outcome ?? '').trim() || '待复盘' })
-    const item = service.addTouchpoint(c.req.param('id'), input)
+    const item = await service.addTouchpoint(c.req.param('id'), input)
     return item ? c.json(item, 201) : c.json(errorBody(c.get('requestId'), 'NOT_FOUND', '关系对象不存在'), 404)
   })
 
-  app.get('/api/knowledge', (c) => {
+  app.get('/api/knowledge', async (c) => {
     const status = c.req.query('status') ? KnowledgeStatusSchema.parse(c.req.query('status')) : undefined
-    return c.json(service.store.listKnowledge(c.req.query('q'), status))
+    return c.json(await service.store.listKnowledge(c.req.query('q'), status))
   })
   app.post('/api/knowledge', async (c) => {
     const body = await jsonBody(c.req.raw)
@@ -138,18 +142,18 @@ export function createApp(service = new BusinessService()) {
     })
     if (input.type === 'url' && !input.sourceUrl) throw new RequestBodyError('URL 知识必须提供有效的 sourceUrl')
     if (input.type === 'file' && !input.sourcePath) throw new RequestBodyError('文件知识必须提供 sourcePath 或文件名')
-    return c.json(service.createKnowledge(input), 201)
+    return c.json(await service.createKnowledge(input), 201)
   })
 
-  app.get('/api/products', (c) => c.json(service.store.listProducts()))
-  app.get('/api/opportunities', (c) => c.json(service.listOpportunities({
+  app.get('/api/products', async (c) => c.json(await service.store.listProducts()))
+  app.get('/api/opportunities', async (c) => c.json((await service.listOpportunities({
     q: c.req.query('q'),
     industry: c.req.query('industry'),
     grade: c.req.query('grade') ? OpportunityGradeSchema.parse(c.req.query('grade')) : undefined,
     stage: c.req.query('stage') ? OpportunityStageSchema.parse(c.req.query('stage')) : undefined,
-  }).map(presentOpportunity)))
-  app.get('/api/opportunities/:id', (c) => {
-    const item = service.store.getOpportunity(c.req.param('id'))
+  })).map(presentOpportunity)))
+  app.get('/api/opportunities/:id', async (c) => {
+    const item = await service.store.getOpportunity(c.req.param('id'))
     return item ? c.json(presentOpportunity(item)) : c.json(errorBody(c.get('requestId'), 'NOT_FOUND', '商机不存在'), 404)
   })
   app.post('/api/opportunities/analyze', async (c) => {
@@ -163,7 +167,7 @@ export function createApp(service = new BusinessService()) {
       occurredAt: body.occurredAt ?? new Date().toISOString(),
     }
     const input = AnalyzeOpportunityInputSchema.parse(normalized)
-    if (service.store.hasOpportunityFingerprint(input.companyName, input.title)) {
+    if (await service.store.hasOpportunityFingerprint(input.companyName, input.title)) {
       return c.json(errorBody(c.get('requestId'), 'DUPLICATE_OPPORTUNITY', '同一企业的同名商机已存在'), 409)
     }
     return c.json(presentOpportunity(await service.analyze(input)), 201)
@@ -180,7 +184,7 @@ export function createApp(service = new BusinessService()) {
   app.patch('/api/opportunities/:id/stage', async (c) => {
     const body = await jsonBody(c.req.raw)
     const stage = OpportunityStageSchema.parse(body.stage)
-    const item = service.store.updateOpportunityStage(c.req.param('id'), stage)
+    const item = await service.store.updateOpportunityStage(c.req.param('id'), stage)
     return item ? c.json(item) : c.json(errorBody(c.get('requestId'), 'NOT_FOUND', '商机不存在'), 404)
   })
 

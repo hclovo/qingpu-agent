@@ -7,25 +7,23 @@ import type {
 } from '@qingpu/contracts'
 import { createRulesInsight, matchProducts, scoreOpportunity } from '@qingpu/domain'
 import type { MastraRuntime, ResearchCandidate } from '../mastra/index.js'
-import type { MemoryStore, OpportunityFilters } from '../store/memory-store.js'
+import { DuplicateOpportunityError, type BusinessStore, type OpportunityFilters } from '../store/store.js'
 
 const publicError = (error: unknown) => error instanceof Error && /超时|timeout/iu.test(error.message)
   ? 'Agent 调用超时'
   : '外部智能服务暂时不可用'
 
-export class DuplicateOpportunityError extends Error {}
-
 export class OpportunityService {
-  constructor(private readonly store: MemoryStore, private readonly runtime: MastraRuntime) {}
+  constructor(private readonly store: BusinessStore, private readonly runtime: MastraRuntime) {}
 
   list(filters: OpportunityFilters) { return this.store.listOpportunities(filters) }
   get(id: string) { return this.store.getOpportunity(id) }
   updateStage(id: string, stage: OpportunityStage) { return this.store.updateOpportunityStage(id, stage) }
 
   async analyze(input: AnalyzeOpportunityInput): Promise<Opportunity> {
-    if (this.store.hasOpportunityFingerprint(input.companyName, input.title)) throw new DuplicateOpportunityError('相同企业和标题的商机已存在')
+    if (await this.store.hasOpportunityFingerprint(input.companyName, input.title)) throw new DuplicateOpportunityError('相同企业和标题的商机已存在')
     const score = scoreOpportunity(input)
-    const productMatches = matchProducts(input, this.store.listProducts())
+    const productMatches = matchProducts(input, await this.store.listProducts())
     let insight: AgentInsight
     if (this.runtime.intelligent) {
       try {
@@ -71,7 +69,7 @@ export class OpportunityService {
         const candidates = await this.runtime.discover(input.query, input.region, input.days)
         const opportunities: Opportunity[] = []
         for (const candidate of candidates) {
-          if (this.store.hasOpportunityFingerprint(candidate.companyName, candidate.title)) continue
+          if (await this.store.hasOpportunityFingerprint(candidate.companyName, candidate.title)) continue
           opportunities.push(await this.createDiscovered(candidate))
         }
         return { mode: 'intelligent', notice: '联网候选均处于待核验阶段，不会自动外发或推进跟进。', candidates: opportunities }
@@ -91,12 +89,12 @@ export class OpportunityService {
       sourceKind: 'public', strategic: false,
     }
     const result = await this.analyze(input)
-    return this.store.updateOpportunityStage(result.id, 'verifying') ?? result
+    return (await this.store.updateOpportunityStage(result.id, 'verifying')) ?? result
   }
 
-  private demoDiscovery(input: DiscoverOpportunityInput, fallbackReason: string) {
+  private async demoDiscovery(input: DiscoverOpportunityInput, fallbackReason: string) {
     const query = input.query.toLowerCase()
-    const all = this.store.listOpportunities({ stage: 'verifying' })
+    const all = await this.store.listOpportunities({ stage: 'verifying' })
     const selected = all.filter((item) => !input.region || item.region.includes(input.region)).filter((item) => [item.title, item.signal, item.industry].join(' ').toLowerCase().includes(query) || query.split(/\s+/).some((term) => [item.title, item.signal, item.industry].join(' ').toLowerCase().includes(term))).slice(0, 4)
     return {
       mode: 'demo' as const,

@@ -9,17 +9,17 @@ import type {
 } from '@qingpu/contracts'
 import { createRulesInsight, matchProducts, scoreOpportunity } from '@qingpu/domain'
 import { MastraRuntime, type ResearchCandidate } from '../mastra/index.js'
-import type { OpportunityFilters } from '../store/memory-store.js'
-import { MemoryStore } from '../store/memory-store.js'
+import { createStore } from '../store/create-store.js'
+import type { BusinessStore, OpportunityFilters } from '../store/store.js'
 
 const today = () => new Date().toISOString()
 const daysBetween = (left: string, right = new Date()) => Math.max(0, Math.floor((right.getTime() - new Date(left).getTime()) / 86_400_000))
 
 export class BusinessService {
-  readonly store: MemoryStore
+  readonly store: BusinessStore
   readonly runtime: MastraRuntime
 
-  constructor(store = new MemoryStore(), runtime = new MastraRuntime(store)) {
+  constructor(store = createStore(), runtime = new MastraRuntime(store)) {
     this.store = store
     this.runtime = runtime
   }
@@ -30,6 +30,7 @@ export class BusinessService {
       version: '0.1.0',
       agentMode: this.runtime.intelligent ? 'intelligent' : 'rules',
       model: this.runtime.intelligent ? this.runtime.model : undefined,
+      storage: this.store.kind,
       now: today(),
     }
   }
@@ -53,16 +54,20 @@ export class BusinessService {
     return this.rulesChat(input, '未配置受支持的模型密钥，已使用本地规则与企业数据回答。')
   }
 
-  private rulesChat(input: AgentChatInput, fallbackReason?: string): AgentChatResponse & { needsConfirmation: string[]; fallbackReason?: string } {
+  private async rulesChat(input: AgentChatInput, fallbackReason?: string): Promise<AgentChatResponse & { needsConfirmation: string[]; fallbackReason?: string }> {
     const message = input.message.toLowerCase()
-    const relationships = this.store.listRelationships()
-    const opportunities = this.store.listOpportunities()
+    const [relationships, opportunities] = await Promise.all([
+      this.store.listRelationships(),
+      this.store.listOpportunities(),
+    ])
     const citations: AgentChatResponse['citations'] = []
     let answer: string
     let suggestedActions: string[]
 
-    const selectedRelationship = input.relationshipId ? this.store.getRelationship(input.relationshipId) : undefined
-    const selectedOpportunity = input.opportunityId ? this.store.getOpportunity(input.opportunityId) : undefined
+    const [selectedRelationship, selectedOpportunity] = await Promise.all([
+      input.relationshipId ? this.store.getRelationship(input.relationshipId) : undefined,
+      input.opportunityId ? this.store.getOpportunity(input.opportunityId) : undefined,
+    ])
 
     if (input.relationshipId) {
       if (!selectedRelationship) {
@@ -84,7 +89,7 @@ export class BusinessService {
         selectedOpportunity.evidence.slice(0, 3).forEach((item) => citations.push({ title: item.title, source: item.url ?? item.kind, excerpt: item.excerpt }))
       }
     } else if (/今天|联系谁|跟进|沉默|待办/u.test(message)) {
-      const briefing = this.briefing()
+      const briefing = await this.briefing()
       const dueNames = briefing.dueFollowUps.slice(0, 3).map((item) => item.name).join('、')
       answer = briefing.summary + (dueNames ? ` 建议先处理：${dueNames}。` : '')
       suggestedActions = ['查看关系中心并记录最新互动', '为到期关系准备沟通提纲', '核验下一步行动负责人']
@@ -106,8 +111,11 @@ export class BusinessService {
       suggestedActions = ['查看高潜商机证据链', '补充项目功率与采购时间', '准备产品匹配沟通材料']
       top.forEach((item) => citations.push({ title: item.title, source: item.evidence[0]?.title ?? '商机记录', excerpt: item.signal }))
     } else if (/产品|船|重卡|制氢|电堆|ocean|cesp/u.test(message)) {
-      const knowledge = this.store.searchKnowledge(input.message, 4)
-      const products = this.store.listProducts().filter((product) => {
+      const [knowledge, productRows] = await Promise.all([
+        this.store.searchKnowledge(input.message, 4),
+        this.store.listProducts(),
+      ])
+      const products = productRows.filter((product) => {
         const text = `${product.model} ${product.family} ${product.scenarios.join(' ')}`.toLowerCase()
         return input.message.toLowerCase().split(/\s+/u).some((term) => term.length > 1 && text.includes(term))
           || (/船/u.test(message) && product.family.includes('船用'))
@@ -121,7 +129,7 @@ export class BusinessService {
       for (const product of products) citations.push({ title: product.model, source: product.source, excerpt: product.reviewNote ?? product.highlights.join('；') })
       for (const item of knowledge) citations.push(this.knowledgeCitation(item))
     } else {
-      const knowledge = this.store.searchKnowledge(input.message, 5)
+      const knowledge = await this.store.searchKnowledge(input.message, 5)
       answer = knowledge.length
         ? `我从企业知识库找到 ${knowledge.length} 条相关内容：${knowledge.map((item) => item.title).join('、')}。${knowledge[0]?.content ?? ''}`
         : '当前知识库没有找到直接依据。你可以补充资料，或换一种问法并注明企业、场景、地区和时间范围。'
@@ -148,10 +156,13 @@ export class BusinessService {
     }
   }
 
-  briefing() {
+  async briefing() {
     const now = new Date()
-    const relationships = this.store.listRelationships()
-    const opportunities = this.store.listOpportunities()
+    const [relationships, opportunities, knowledge] = await Promise.all([
+      this.store.listRelationships(),
+      this.store.listOpportunities(),
+      this.store.listKnowledge(),
+    ])
     const dueFollowUps = relationships
       .filter((item) => item.nextActionAt && new Date(item.nextActionAt).getTime() <= now.getTime() + 7 * 86_400_000)
       .map((item) => ({ id: item.id, relationshipId: item.id, name: item.name, reason: item.nextAction ?? '下一步行动已到期', nextAction: item.nextAction, dueAt: item.nextActionAt }))
@@ -162,7 +173,7 @@ export class BusinessService {
       .filter((item) => item.grade === 'A')
       .slice(0, 5)
       .map((item) => ({ id: item.id, opportunityId: item.id, companyName: item.companyName, title: item.title, reason: item.insight.summary, score: item.score, grade: item.grade }))
-    const knowledgeGaps = this.store.listKnowledge().filter((item) => item.status !== 'ready').map((item) => ({ id: item.id, title: item.title, reason: `处理状态：${item.status}` }))
+    const knowledgeGaps = knowledge.filter((item) => item.status !== 'ready').map((item) => ({ id: item.id, title: item.title, reason: `处理状态：${item.status}` }))
     const summary = `今天有 ${dueFollowUps.length} 项关系跟进进入处理窗口，${silentRelationships.length} 个关系需要恢复联系，${highPotentialOpportunities.length} 个高潜商机值得优先核验。`
     const items = [
       ...dueFollowUps.map((item) => ({ id: `follow-up-${item.id}`, type: 'follow-up' as const, priority: 'high' as const, title: `跟进 ${item.name}`, description: item.reason, relationshipId: item.relationshipId, dueAt: item.dueAt })),
@@ -185,9 +196,12 @@ export class BusinessService {
     }
   }
 
-  dashboard() {
-    const opportunities = this.store.listOpportunities()
-    const relationships = this.store.listRelationships()
+  async dashboard() {
+    const [opportunities, relationships, knowledge] = await Promise.all([
+      this.store.listOpportunities(),
+      this.store.listRelationships(),
+      this.store.listKnowledge(),
+    ])
     const gradeDistribution = Object.fromEntries(['A', 'B', 'C', 'D'].map((grade) => [grade, opportunities.filter((item) => item.grade === grade).length]))
     const industryDistribution = Object.entries(opportunities.reduce<Record<string, number>>((acc, item) => {
       acc[item.industry] = (acc[item.industry] ?? 0) + 1
@@ -197,7 +211,7 @@ export class BusinessService {
     const newThisWeek = opportunities.filter((item) => daysBetween(item.createdAt) <= 7).length
     const averageScore = opportunities.length ? Math.round(opportunities.reduce((sum, item) => sum + item.score, 0) / opportunities.length) : 0
     const relationshipAttention = relationships.filter((item) => item.health !== 'healthy').length
-    const knowledgeTotal = this.store.listKnowledge().length
+    const knowledgeTotal = knowledge.length
     return {
       opportunityTotal: opportunities.length,
       highPotential,
@@ -230,7 +244,7 @@ export class BusinessService {
 
   async analyze(input: AnalyzeOpportunityInput): Promise<Opportunity> {
     const score = scoreOpportunity(input)
-    const products = matchProducts(input, this.store.listProducts())
+    const products = matchProducts(input, await this.store.listProducts())
     let insight = createRulesInsight(input, score, products)
     if (this.runtime.intelligent) {
       try {
@@ -303,8 +317,8 @@ export class BusinessService {
     return { ...item, score: score.score, grade: score.grade, status: 'verifying' }
   }
 
-  private demoDiscovery(reason: string) {
-    const candidates = this.store.listOpportunities().slice(0, 4).map((item) => ({
+  private async demoDiscovery(reason: string) {
+    const candidates = (await this.store.listOpportunities()).slice(0, 4).map((item) => ({
       id: item.id,
       companyName: item.companyName,
       title: item.title,

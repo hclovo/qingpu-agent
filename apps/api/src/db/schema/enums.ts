@@ -1,0 +1,15 @@
+import { pgEnum } from 'drizzle-orm/pg-core'
+
+export const relationshipRoleEnum = pgEnum('relationship_role', ['customer', 'prospect', 'supplier', 'partner'])
+export const relationshipHealthEnum = pgEnum('relationship_health', ['healthy', 'attention', 'at-risk'])
+export const opportunityGradeEnum = pgEnum('opportunity_grade', ['A', 'B', 'C', 'D'])
+export const opportunityStageEnum = pgEnum('opportunity_stage', ['new', 'verifying', 'qualified', 'engaging', 'converted', 'closed'])
+export const signalTypeEnum = pgEnum('signal_type', ['procurement', 'project', 'policy', 'operation', 'partnership'])
+export const maturityEnum = pgEnum('maturity', ['awareness', 'planning', 'approved', 'tendering', 'pilot', 'operating', 'repeat-purchase'])
+export const contactabilityEnum = pgEnum('contactability', ['unknown', 'public-channel', 'known-contact', 'existing-relationship'])
+export const sourceKindEnum = pgEnum('source_kind', ['public', 'enterprise-provided', 'demo-simulated'])
+export const knowledgeTypeEnum = pgEnum('knowledge_type', ['enterprise-document', 'text', 'url', 'file', 'interaction'])
+export const knowledgeStatusEnum = pgEnum('knowledge_status', ['ready', 'pending', 'review-needed', 'failed'])
+export const touchpointChannelEnum = pgEnum('touchpoint_channel', ['meeting', 'phone', 'email', 'wechat', 'event', 'visit', 'other'])
+export const scoreDimensionKeyEnum = pgEnum('score_dimension_key', ['fit', 'demand', 'recency', 'maturity', 'contactability', 'strategic'])
+export const agentModeEnum = pgEnum('agent_mode', ['intelligent', 'rules', 'demo'])

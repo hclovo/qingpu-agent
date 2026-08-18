@@ -16,6 +16,19 @@ pnpm dev
 
 不配置模型密钥时，系统使用可解释的本地规则引擎和演示信号，Agent 对话、关系提醒、知识补充和商机页面仍可运行。配置 `OPENAI_API_KEY` 等模型提供方密钥后，会启用 Mastra Agent 的工具调用、结构化研判和联网商机发现能力。
 
+### PostgreSQL 持久化
+
+`DATABASE_URL` 留空时 API 使用内存数据；配置后自动切换到 PostgreSQL/Drizzle 仓储。首次使用时先在 `.env` 中设置 `DATABASE_URL=postgres://qingpu:qingpu@localhost:5432/qingpu_agent`，再执行：
+
+```bash
+docker compose up -d postgres
+pnpm --filter @qingpu/api db:migrate
+pnpm --filter @qingpu/api db:seed
+pnpm dev
+```
+
+迁移与种子是显式命令，API 启动时不会自动修改数据库结构。健康检查响应中的 `storage` 为 `postgres` 或 `memory`。
+
 ### OpenAI 与兼容服务
 
 在仓库根目录 `.env` 中配置，密钥只由后端读取，不要放到 Web 环境变量或提交到 Git：
@@ -42,6 +55,9 @@ pnpm typecheck    # 全仓类型检查
 pnpm test         # 单元测试与 API 测试
 pnpm build        # 生产构建
 pnpm check        # 完整校验
+pnpm --filter @qingpu/api db:generate # 根据 Schema 生成迁移
+pnpm --filter @qingpu/api db:migrate  # 应用 PostgreSQL 迁移
+pnpm --filter @qingpu/api db:seed     # 幂等写入演示种子
 ```
 
 ## 仓库结构
@@ -55,4 +71,4 @@ docs               需求与前后端设计文档
 T04_...            企业原始资料，保持只读
 ```
 
-详细范围、验收口径和架构决策参见 [需求文档](./docs/氢能产业商机与精准获客Agent-需求文档.md) 与 [前后端设计文档](./docs/氢能产业商机与精准获客Agent-前后端设计文档.md)。
+详细范围、验收口径和架构决策参见 [需求文档](./docs/氢能产业商机与精准获客Agent-需求文档.md)、[前后端设计文档](./docs/氢能产业商机与精准获客Agent-前后端设计文档.md) 与 [数据库设计文档](./docs/氢能产业商机与精准获客Agent-数据库设计文档.md)。

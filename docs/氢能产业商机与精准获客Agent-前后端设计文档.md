@@ -18,7 +18,7 @@
 | Agent | `@mastra/core` | 官方 TypeScript Agent/Tool/结构化输出能力 |
 | 契约 | Zod 4 | 前后端共享类型和运行时校验 |
 | 测试 | Vitest | 统一测试体验，适合 TS/ESM |
-| MVP 数据 | 内存 Repository + 可审计种子 | 无外部服务即可演示；便于替换数据库 |
+| 数据 | 异步 `BusinessStore` + PostgreSQL/Drizzle；内存降级 | 配置 `DATABASE_URL` 后持久化；无外部服务仍可演示 |
 
 Mastra 官方推荐 Node.js 22.13+ 和现代 ESM。依赖版本由 lockfile 固定，各 Mastra 包独立版本，不强行对齐。
 
@@ -30,7 +30,7 @@ flowchart LR
   W -->|"JSON /api"| A["Hono API"]
   A --> S["Agent / 关系 / 商机服务"]
   S --> R["Repository 接口"]
-  R --> D["MVP 内存数据 / 后续数据库"]
+  R --> D["MVP 内存数据 / PostgreSQL"]
   A --> M["Mastra Runtime"]
   M --> T1["评分 Tool"]
   M --> T2["产品匹配 Tool"]
@@ -47,7 +47,7 @@ flowchart LR
 - Service：编排 Agent、关系提醒、知识检索、评分、匹配和 Repository，处理回退策略。
 - Domain：纯函数评分与产品匹配，完全不依赖模型。
 - Mastra：自然语言理解、公开信息搜索、摘要与行动建议。
-- Repository：隔离持久化实现；MVP 内存化，生产替换为 PostgreSQL/SQLite。
+- Repository：`BusinessStore` 隔离持久化实现；运行时按 `DATABASE_URL` 选择 PostgreSQL/Drizzle 或内存降级（见数据库设计文档）。不使用 SQLite。
 
 ## 4. 目录设计
 
@@ -57,10 +57,13 @@ apps/
     src/
       mastra/{agents,tools,index.ts}
       data/seed.ts
+      db/{client,migrate,seed}.ts
+      db/schema/{enums,products,relationships,knowledge,opportunities,relations,index}.ts
       services/{agent,relationship,knowledge,opportunity}-service.ts
-      store/memory-store.ts
+      store/{store,create-store,memory-store,postgres-store}.ts
       app.ts
       index.ts
+    drizzle/                 # Drizzle SQL 迁移与元数据
   web/
     src/
       components/
@@ -127,7 +130,7 @@ interface KnowledgeRepository {
 }
 ```
 
-生产版可用 Drizzle + PostgreSQL 实现同一接口。知识长文本再按需加入 Mastra RAG；地区、标签、阶段、分数等结构化字段保持关系查询。
+当前已用 Drizzle + PostgreSQL 实现同一异步接口，并保留内存实现用于无数据库演示和单元测试。知识长文本再按需加入 Mastra RAG；地区、标签、阶段、分数等结构化字段保持关系查询。
 
 ### 5.3 评分设计
 
@@ -375,14 +378,14 @@ OPENAI_BASE_URL=
 
 - Web 构建为静态资源；API 作为独立 Node 服务部署。
 - 增加身份认证、RBAC、请求限流、CSRF/CORS 策略和安全响应头。
-- 内存 Repository 替换为 PostgreSQL，增加迁移、备份和审计表。
+- PostgreSQL 生产部署补充独立迁移角色、备份与恢复演练；阶段审计表按需求启用。
 - Agent 运行接入 Mastra observability，设置超时、预算、模型回退和告警。
 - 公开数据采集遵循站点条款、个人信息保护和可删除要求。
 
 ## 12. 后续演进
 
 1. OCR + 人工校验台，把产品册转成带页码与版本的结构化知识库。
-2. PostgreSQL + pgvector/`@mastra/pg`，实现结构化过滤与 RAG 混合检索。
+2. 在现有 PostgreSQL 上增加 pgvector/`@mastra/pg`，实现结构化过滤与 RAG 混合检索。
 3. 接入招投标、政策、产业园区、企业新闻等合规数据源。
 4. 与 CRM 双向同步，利用真实输赢结果校准评分权重。
 5. 引入人工反馈、Agent Eval、Prompt 版本和数据质量看板。
