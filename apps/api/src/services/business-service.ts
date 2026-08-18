@@ -298,7 +298,7 @@ export class BusinessService {
         const rows = await this.runtime.discover(query, region, days)
         return { mode: 'intelligent', notice: '联网候选均为待核验材料，不会自动触达或写入跟进阶段。', candidates: rows.map((item) => this.scoreResearchCandidate(item)) }
       } catch (error) {
-        void error
+        console.error('[discover] 实时搜索失败:', error)
         return this.demoDiscovery('实时搜索暂时不可用')
       }
     }

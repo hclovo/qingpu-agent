@@ -139,10 +139,23 @@ export class MastraRuntime {
   async discover(query: string, region: string | undefined, days: number): Promise<ResearchCandidate[]> {
     if (!this.intelligent) throw new Error('未配置受支持的模型密钥')
     if (!process.env.TAVILY_API_KEY?.trim()) throw new Error('未配置实时搜索服务密钥')
-    const result = await timeout(this.agents.opportunityResearchAgent.generate(
-      `使用 webSearchTool 搜索最近 ${days} 天的“${query}”${region ? `，地区限定：${region}` : ''}。只返回有来源 URL 的企业级商机候选。`,
-      { structuredOutput: { schema: ResearchOutputSchema, jsonPromptInjection: 'auto' } },
-    ), AGENT_TIMEOUT_MS + 10_000)
-    return extractStructured(result, ResearchOutputSchema).candidates
+    const prompt = `使用 webSearchTool 搜索最近 ${days} 天的”${query}”${region ? `，地区限定：${region}` : ''}。只返回有来源 URL 的企业级商机候选。`
+    try {
+      const result = await timeout(this.agents.opportunityResearchAgent.generate(prompt,
+        { structuredOutput: { schema: ResearchOutputSchema, jsonPromptInjection: 'auto' } },
+      ), AGENT_TIMEOUT_MS + 10_000)
+      return extractStructured(result, ResearchOutputSchema).candidates
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!message.includes('STRUCTURED_OUTPUT_SCHEMA_VALIDATION_FAILED')) throw error
+      console.warn('[discover] 结构化输出失败，回退到文本解析:', message)
+      const result = await timeout(this.agents.opportunityResearchAgent.generate(prompt), AGENT_TIMEOUT_MS + 10_000)
+      const text = (result as { text?: string }).text?.trim() ?? ''
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('模型未返回可解析的 JSON 结果')
+      const parsed = JSON.parse(jsonMatch[0]) as { candidates?: unknown[] }
+      const candidates = Array.isArray(parsed.candidates) ? parsed.candidates : [parsed].filter(Boolean)
+      return ResearchCandidateSchema.array().parse(candidates).slice(0, 8)
+    }
   }
 }
