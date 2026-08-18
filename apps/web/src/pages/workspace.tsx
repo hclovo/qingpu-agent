@@ -172,12 +172,12 @@ export default function WorkspacePage() {
                 <Lightbulb size={20} />
                 <p>{briefing.summary}</p>
               </div>
-              <BriefingGroup title="到期跟进" count={briefing.dueFollowUps.length} tone="orange" items={briefing.dueFollowUps} />
-              <BriefingGroup title="高潜商机" count={briefing.highPotentialOpportunities.length} tone="green" items={briefing.highPotentialOpportunities} />
-              <BriefingGroup title="沉默关系" count={briefing.silentRelationships.length} tone="blue" items={briefing.silentRelationships} />
+              <BriefingGroup title="到期跟进" count={briefing.dueFollowUps.length} tone="due" items={briefing.dueFollowUps} />
+              <BriefingGroup title="高潜商机" count={briefing.highPotentialOpportunities.length} tone="ready" items={briefing.highPotentialOpportunities} />
+              <BriefingGroup title="沉默关系" count={briefing.silentRelationships.length} tone="watch" items={briefing.silentRelationships} />
               {!!briefing.knowledgeGaps.length && (
                 <section className="briefing-group compact">
-                  <div className="briefing-title"><span className="tone-dot purple" /><strong>待补知识</strong><b>{briefing.knowledgeGaps.length}</b></div>
+                  <div className="briefing-title"><span className="tone-dot watch" /><strong>待补知识</strong><b>{briefing.knowledgeGaps.length}</b></div>
                   <p>{typeof briefing.knowledgeGaps[0] === 'string' ? briefing.knowledgeGaps[0] : briefing.knowledgeGaps[0].title ?? briefing.knowledgeGaps[0].reason}</p>
                   <Link className="text-link" to="/knowledge">去补充知识 <ArrowRight size={14} /></Link>
                 </section>

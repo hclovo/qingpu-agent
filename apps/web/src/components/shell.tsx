@@ -52,7 +52,7 @@ export default function Shell() {
         <div className="nav-section-label">工作空间</div>
         <nav className="main-nav" aria-label="主导航">
           {nav.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavLink key={to} to={to} end={end} className={({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '')}>
               <Icon size={18} />
               <span>{label}</span>
               <ChevronRight className="nav-chevron" size={14} />

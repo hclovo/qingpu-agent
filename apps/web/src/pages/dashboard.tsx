@@ -29,10 +29,10 @@ export default function DashboardPage() {
       {loading ? <LoadingState /> : error ? <ErrorState message={error} onRetry={load} /> : data ? (
         <div className="dashboard-stack">
           <section className="metric-grid">
-            <Metric icon={<Target />} label="商机总数" value={data.metrics.total} note="当前已收录" tone="navy" />
-            <Metric icon={<Gauge />} label="高潜商机" value={data.metrics.highPotential} note="A级优先跟进" tone="orange" />
-            <Metric icon={<CalendarPlus />} label="本周新增" value={data.metrics.addedThisWeek} note="新发现信号" tone="green" />
-            <Metric icon={<ChartNoAxesColumnIncreasing />} label="平均优先级" value={Math.round(data.metrics.averageScore)} suffix="分" note="不等同成交概率" tone="blue" />
+            <Metric icon={<Target />} label="商机总数" value={data.metrics.total} note="当前已收录，可按等级筛选" />
+            <Metric icon={<Gauge />} label="高潜商机" value={data.metrics.highPotential} note="A 级优先跟进" />
+            <Metric icon={<CalendarPlus />} label="本周新增" value={data.metrics.addedThisWeek} note="新发现信号待研判" />
+            <Metric icon={<ChartNoAxesColumnIncreasing />} label="平均优先级" value={Math.round(data.metrics.averageScore)} suffix="分" note="跟进优先级，不等同成交概率" />
           </section>
           <div className="dashboard-grid">
             <section className="card chart-card">
@@ -79,8 +79,9 @@ export default function DashboardPage() {
   )
 }
 
-function Metric({ icon, label, value, suffix, note, tone }: { icon: React.ReactNode; label: string; value: number; suffix?: string; note: string; tone: string }) {
-  return <article className="metric-card"><div className={`metric-icon ${tone}`}>{icon}</div><div><span>{label}</span><strong>{value}<small>{suffix}</small></strong><p>{note}</p></div></article>
+// 读数条：一条容器纵向分格，不用四张彩色图标卡片（见 DESIGN.md → Readout Strip）
+function Metric({ icon, label, value, suffix, note }: { icon: React.ReactNode; label: string; value: number; suffix?: string; note: string }) {
+  return <article className="metric-readout"><span>{icon}{label}</span><strong>{value}{suffix ? <small>{suffix}</small> : null}</strong><p>{note}</p></article>
 }
 
 function Distribution({ rows, variant }: { rows: Array<{ label: string; value: number }>; variant?: 'grade' }) {
