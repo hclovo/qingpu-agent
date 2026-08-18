@@ -4,7 +4,8 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { displaySource, formatDate, roleLabels } from '../lib/format'
 import type { Relationship } from '../lib/types'
-import { Drawer, EmptyState, ErrorState, LoadingState, PageHeader, ProgressBar, StatusBadge } from '../components/ui'
+import { Drawer, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from '../components/ui'
+import { ProgressArc } from '../components/console'
 
 const roleTabs = [
   { value: 'all', label: '全部关系' },
@@ -59,28 +60,51 @@ export default function RelationshipsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="RELATIONSHIP INTELLIGENCE"
         title="关系中心"
         description="把客户、潜客、上游厂商和伙伴的互动上下文沉淀为可行动的长期关系。"
       />
       <section className="card relationship-card">
         <div className="toolbar relationship-toolbar">
           <div className="segmented-tabs" role="tablist">
-            {roleTabs.map((tab) => <button key={tab.value} type="button" className={role === tab.value ? 'active' : ''} onClick={() => setRole(tab.value)}>{tab.label}<span>{tab.value === 'all' ? items.length : items.filter((item) => item.role === tab.value).length}</span></button>)}
+            {roleTabs.map((tab) => (
+              <button key={tab.value} type="button" className={role === tab.value ? 'active' : ''} onClick={() => setRole(tab.value)}>
+                {tab.label}
+                <span>{tab.value === 'all' ? items.length : items.filter((item) => item.role === tab.value).length}</span>
+              </button>
+            ))}
           </div>
-          <label className="search-control"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索企业、行业或地区" /></label>
+          <label className="search-control">
+            <Search size={16} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索企业、行业或地区" />
+          </label>
+        </div>
+        <div className="relationship-list-head">
+          <span>关系对象</span>
+          <span>关系类型</span>
+          <span>健康度</span>
+          <span>最近联系</span>
+          <span>下一步行动</span>
+          <span>资料</span>
         </div>
         {loading ? <LoadingState /> : error ? <ErrorState message={error} onRetry={load} /> : filtered.length ? (
           <div className="relationship-list">
-            <div className="relationship-list-head"><span>关系对象</span><span>关系类型</span><span>健康度</span><span>最近联系</span><span>下一步行动</span><span>资料来源</span></div>
             {filtered.map((item) => {
               const health = typeof item.healthScore === 'number' ? item.healthScore : typeof item.health === 'number' ? item.health : 0
               return (
                 <button type="button" className="relationship-row" key={item.id} onClick={() => void select(item.id)}>
-                  <span className="relationship-company"><span className={`relation-icon role-${item.role}`}><RoleIcon role={item.role} /></span><span><strong>{item.name}</strong><small>{item.industry ?? '行业待补充'} · {item.region ?? '地区待补充'}</small></span></span>
+                  <span className="relationship-company">
+                    <span className={`relation-icon role-${item.role}`}><RoleIcon role={item.role} /></span>
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.industry ?? '行业待补充'} · {item.region ?? '地区待补充'}</small>
+                    </span>
+                  </span>
                   <span><StatusBadge value={item.role} label={roleLabels[item.role] ?? item.role} /></span>
-                  <span className="health-cell"><span><b>{health || '--'}</b>{health ? '/100' : ''}</span><ProgressBar value={health} /></span>
-                  <span>{formatDate(item.lastContactAt)}</span>
+                  <span className="health-cell">
+                    <div className="top"><b>{health || '--'}</b>{health ? <span>/100</span> : null}</div>
+                    <div className="progress-track"><span style={{ width: `${health}%` }} /></div>
+                  </span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--ink-subtle)' }}>{formatDate(item.lastContactAt)}</span>
                   <span className="next-action-cell">{item.nextAction ?? '待制定'}{item.nextActionAt && <small>{formatDate(item.nextActionAt)}</small>}</span>
                   <span><span className={(item.sourceType ?? item.sourceKind) === 'demo-simulated' ? 'source-tag demo' : 'source-tag'}>{displaySource(item.sourceType ?? item.sourceKind)}</span></span>
                 </button>
@@ -91,7 +115,12 @@ export default function RelationshipsPage() {
       </section>
       {(selected || detailLoading) && (
         <Drawer title={selected?.name ?? '正在加载关系…'} subtitle={selected ? `${roleLabels[selected.role] ?? selected.role} · ${selected.industry ?? '行业待补充'}` : undefined} onClose={() => setSearchParams({}, { replace: true })}>
-          {detailLoading && !selected ? <LoadingState /> : selected && <RelationshipDetail relationship={selected} onUpdated={(next) => { setSelected(next); setItems((current) => current.map((item) => item.id === next.id ? next : item)) }} />}
+          {detailLoading && !selected ? <LoadingState /> : selected && (
+            <RelationshipDetail relationship={selected} onUpdated={(next) => {
+              setSelected(next)
+              setItems((current) => current.map((item) => item.id === next.id ? next : item))
+            }} />
+          )}
         </Drawer>
       )}
     </>
@@ -122,13 +151,44 @@ function RelationshipDetail({ relationship, onUpdated }: { relationship: Relatio
   }
   return <div className="relationship-detail">
     <section className="detail-summary-grid">
-      <div><span>关系健康度</span><strong>{health || '--'}{health ? '/100' : ''}</strong><ProgressBar value={health} /></div>
-      <div><span>最近联系</span><strong>{formatDate(relationship.lastContactAt)}</strong><small>{relationship.touchpoints?.[0]?.channel ?? '暂无渠道记录'}</small></div>
-      <div><span>资料完整度</span><strong>{relationship.dataCompleteness ?? '--'}{relationship.dataCompleteness !== undefined ? '%' : ''}</strong><ProgressBar value={relationship.dataCompleteness ?? 0} /></div>
-      <div><span>关联商机</span><strong>{relationship.opportunityIds?.length ?? 0}</strong><small>条有效记录</small></div>
+      <div>
+        <span>关系健康度</span>
+        <strong style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <ProgressArc value={health} size={48} stroke={4} />
+          {health || '--'}{health ? '/100' : ''}
+        </strong>
+        <small>综合健康度：互动 × 资料 × 触达</small>
+      </div>
+      <div>
+        <span>最近联系</span>
+        <strong>{formatDate(relationship.lastContactAt)}</strong>
+        <small>{relationship.touchpoints?.[0]?.channel ?? '暂无渠道记录'}</small>
+      </div>
+      <div>
+        <span>资料完整度</span>
+        <strong>{relationship.dataCompleteness ?? '--'}{relationship.dataCompleteness !== undefined ? '%' : ''}</strong>
+        <div className="progress-track"><span style={{ width: `${relationship.dataCompleteness ?? 0}%` }} /></div>
+      </div>
+      <div>
+        <span>关联商机</span>
+        <strong>{relationship.opportunityIds?.length ?? 0}</strong>
+        <small>条有效记录</small>
+      </div>
     </section>
-    <section className="next-action-panel"><CalendarClock size={18} /><div><span>下一步行动</span><strong>{relationship.nextAction ?? '尚未制定下一步行动'}</strong>{relationship.nextActionAt && <small>计划日期：{formatDate(relationship.nextActionAt)}</small>}</div></section>
-    <div className="detail-section-title"><div><History size={17} /><h3>互动时间线</h3></div><button className="button primary small" type="button" onClick={() => setShowForm((value) => !value)}><MessageSquarePlus size={15} /> 记录互动</button></div>
+    <section className="next-action-panel">
+      <CalendarClock size={18} />
+      <div>
+        <span>下一步行动</span>
+        <strong>{relationship.nextAction ?? '尚未制定下一步行动'}</strong>
+        {relationship.nextActionAt && <small>计划日期：{formatDate(relationship.nextActionAt)}</small>}
+      </div>
+    </section>
+    <div className="detail-section-title">
+      <div><History size={16} /><h3>互动时间线</h3></div>
+      <button className="button primary small" type="button" onClick={() => setShowForm((value) => !value)}>
+        <MessageSquarePlus size={14} /> 记录互动
+      </button>
+    </div>
     {showForm && <form className="touchpoint-form form-grid" onSubmit={submit}>
       <label><span>互动日期 *</span><input required name="occurredAt" type="date" defaultValue={new Date().toISOString().slice(0, 10)} /></label>
       <label><span>渠道 *</span><select required name="channel"><option value="phone">电话</option><option value="meeting">会议</option><option value="email">邮件</option><option value="wechat">企业微信</option><option value="visit">拜访</option></select></label>
@@ -137,10 +197,23 @@ function RelationshipDetail({ relationship, onUpdated }: { relationship: Relatio
       <label className="full"><span>下一步行动</span><input name="nextAction" placeholder="如：准备船用系统案例与参数清单" /></label>
       <label><span>计划日期</span><input name="nextActionAt" type="date" /></label>
       {error && <div className="inline-error full">{error}</div>}
-      <div className="form-actions full"><button type="button" className="button ghost" onClick={() => setShowForm(false)}>取消</button><button type="submit" className="button primary" disabled={saving}>{saving ? '保存中…' : <><Check size={15} /> 保存记录</>}</button></div>
+      <div className="form-actions full">
+        <button type="button" className="button ghost" onClick={() => setShowForm(false)}>取消</button>
+        <button type="submit" className="button primary" disabled={saving}>{saving ? '保存中…' : <><Check size={15} /> 保存记录</>}</button>
+      </div>
     </form>}
     <div className="timeline">
-      {relationship.touchpoints?.length ? relationship.touchpoints.map((touchpoint) => <article key={touchpoint.id} className="timeline-item"><div className="timeline-dot" /><div><time>{formatDate(touchpoint.occurredAt ?? touchpoint.contactedAt, true)} · {touchpoint.channel}</time><p>{touchpoint.summary}</p>{touchpoint.outcome && <span>结果：{touchpoint.outcome}</span>}{touchpoint.nextAction && <small>下一步：{touchpoint.nextAction}</small>}</div></article>) : <EmptyState title="暂无互动记录" description="记录一次联系，Agent 才能更准确地识别关系维护节点。" />}
+      {relationship.touchpoints?.length ? relationship.touchpoints.map((touchpoint) => (
+        <article key={touchpoint.id} className="timeline-item">
+          <div className="timeline-dot" />
+          <div>
+            <time>{formatDate(touchpoint.occurredAt ?? touchpoint.contactedAt, true)} · {touchpoint.channel}</time>
+            <p>{touchpoint.summary}</p>
+            {touchpoint.outcome && <span>结果：{touchpoint.outcome}</span>}
+            {touchpoint.nextAction && <small>下一步：{touchpoint.nextAction}</small>}
+          </div>
+        </article>
+      )) : <EmptyState title="暂无互动记录" description="记录一次联系，Agent 才能更准确地识别关系维护节点。" />}
     </div>
   </div>
 }

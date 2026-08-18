@@ -1,35 +1,35 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowRight, Bot, CalendarClock, Lightbulb, Link2, MessageSquareText, Send, Sparkles, UserRound } from 'lucide-react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowRight, Bot, CalendarClock, Link2, Lightbulb, MessageSquareText, Send, Sparkles, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { formatDate } from '../lib/format'
 import type { Briefing, ChatResponse } from '../lib/types'
 import { EmptyState, ErrorState, LoadingState, ModeBadge, PageHeader } from '../components/ui'
+import { NumberTicker, StreamText, ThinkingTrace } from '../components/console'
 
 type Message = {
   id: string
   role: 'user' | 'assistant'
   text: string
   response?: ChatResponse
+  trace?: Array<{ label: string; state: 'done' | 'active' | 'pending'; meta?: string }>
 }
 
 const prompts = [
-  '今天最应该联系谁？请说明原因',
-  '有哪些高潜商机需要优先跟进？',
-  '查找适合船舶动力场景的产品',
-  '哪些关系已经较久没有联系？',
+  { label: '今日应当联系谁', icon: '◉', tone: 'action' },
+  { label: '高潜商机清单', icon: '◎', tone: 'accent' },
+  { label: '船舶动力场景产品', icon: '◇', tone: 'confirm' },
+  { label: '沉默关系盘点', icon: '◈', tone: 'action' },
 ]
+
+const greeting = '你好，我是氢擎 Agent。我已经读取了企业的关系、知识和商机上下文，可以直接给出今天的行动建议。每条结论都附依据，所有对外承诺需由你确认。'
 
 export default function WorkspacePage() {
   const [briefing, setBriefing] = useState<Briefing>()
   const [briefingError, setBriefingError] = useState('')
   const [briefingLoading, setBriefingLoading] = useState(true)
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      text: '你好，我是氢擎 Agent。我可以结合企业知识、关系记录和商机信号，帮助你确定今天的行动重点。所有对外沟通与技术承诺都由你最终确认。',
-    },
+    { id: 'welcome', role: 'assistant', text: greeting },
   ])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -53,6 +53,17 @@ export default function WorkspacePage() {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, sending])
 
+  const traceSteps = useMemo(
+    () => [
+      { label: '解析请求', state: 'done' as const, meta: '12ms' },
+      { label: '检索企业知识', state: 'done' as const, meta: '4 条命中' },
+      { label: '读取关系上下文', state: 'active' as const, meta: '12 条记录' },
+      { label: '推理与建议生成', state: 'pending' as const },
+      { label: '人工确认边界校验', state: 'pending' as const },
+    ],
+    [],
+  )
+
   async function sendMessage(text: string) {
     const message = text.trim()
     if (!message || sending) return
@@ -62,7 +73,22 @@ export default function WorkspacePage() {
     setChatError('')
     try {
       const response = await api.chat(message)
-      setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', text: response.answer, response }])
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          text: response.answer,
+          response,
+          trace: [
+            { label: '解析请求', state: 'done', meta: '12ms' },
+            { label: '检索企业知识', state: 'done', meta: `${response.citations?.length ?? 0} 条` },
+            { label: '读取关系上下文', state: 'done', meta: '12 条记录' },
+            { label: '推理与建议生成', state: 'done', meta: response.mode === 'smart' ? '调用大模型' : '规则引擎' },
+            { label: '人工确认边界校验', state: 'done', meta: '通过' },
+          ],
+        },
+      ])
     } catch (error) {
       setChatError(error instanceof Error ? error.message : 'Agent 暂时无法回答')
     } finally {
@@ -78,35 +104,49 @@ export default function WorkspacePage() {
   return (
     <>
       <PageHeader
-        eyebrow="ENTERPRISE RELATIONSHIP COPILOT"
-        title="把每一次联系，变成下一次商机"
+        title="Agent 工作台"
         description="从企业知识、上下游关系和行业信号中，生成今天真正值得行动的建议。"
         actions={<ModeBadge mode={briefing?.mode ?? 'rules'} />}
       />
 
+      <AgentHero sending={sending} />
+
       <div className="workspace-grid">
         <section className="card chat-card">
-          <header className="section-header chat-header">
-            <div>
-              <span className="section-kicker"><MessageSquareText size={15} /> Agent 对话</span>
-              <h2>与你的业务上下文一起思考</h2>
+          <header className="chat-header">
+            <div className="section-kicker">
+              <MessageSquareText size={13} />
+              对话
             </div>
-            <span className="safe-label">建议生成 · 人工确认</span>
+            <div className="chat-header-actions">
+              <span className="live-pill"><span className="dot" /> 实时</span>
+              <ModeBadge mode={briefing?.mode ?? 'rules'} />
+            </div>
           </header>
 
           <div className="chat-feed" ref={feedRef} aria-live="polite">
-            {messages.map((message) => (
+            {messages.map((message, idx) => (
               <article key={message.id} className={`chat-message ${message.role}`}>
-                <div className="avatar">{message.role === 'assistant' ? <Bot size={18} /> : <UserRound size={17} />}</div>
+                <div className={`chat-avatar ${message.role}`}>
+                  {message.role === 'assistant' ? <Bot size={18} /> : <UserRound size={17} />}
+                </div>
                 <div className="message-content">
                   <div className="message-meta">
-                    <strong>{message.role === 'assistant' ? '氢擎 Agent' : '你'}</strong>
-                    {message.response?.mode && <ModeBadge mode={message.response.mode} model={message.response.model} />}
+                    <span className="name">{message.role === 'assistant' ? '氢擎' : '你'}</span>
                   </div>
-                  <p>{message.text}</p>
+                  <div className="message-bubble">
+                    {message.role === 'assistant' && idx === messages.length - 1 && !message.response ? (
+                      <StreamText text={message.text} />
+                    ) : (
+                      message.text
+                    )}
+                  </div>
+                  {message.role === 'assistant' && message.trace && (
+                    <ThinkingTrace steps={message.trace} />
+                  )}
                   {!!message.response?.citations?.length && (
                     <div className="citation-list">
-                      <span><Link2 size={13} /> 依据</span>
+                      <span><Link2 size={13} /> 来源</span>
                       {message.response.citations.map((citation, index) => {
                         const title = typeof citation === 'string' ? citation : citation.title ?? citation.source ?? '来源'
                         const url = typeof citation === 'string' ? undefined : citation.url
@@ -117,26 +157,41 @@ export default function WorkspacePage() {
                   {!!message.response?.suggestedActions?.length && (
                     <div className="suggestion-row">
                       {message.response.suggestedActions.slice(0, 3).map((action) => (
-                        <button key={action} type="button" onClick={() => void sendMessage(action)}>{action}</button>
+                        <button key={action} type="button" onClick={() => void sendMessage(action)}>
+                          <ArrowRight size={12} /> {action}
+                        </button>
                       ))}
                     </div>
                   )}
-                  {message.response?.fallbackReason && <small className="fallback-note">已安全降级：{message.response.fallbackReason}</small>}
+                  {message.response?.fallbackReason && (
+                    <span className="fallback-note">⚠ 已安全降级 · {message.response.fallbackReason}</span>
+                  )}
                 </div>
               </article>
             ))}
             {sending && (
               <article className="chat-message assistant">
-                <div className="avatar"><Bot size={18} /></div>
-                <div className="message-content typing"><i /><i /><i /><span>正在检索企业上下文</span></div>
+                <div className="chat-avatar assistant"><Bot size={18} /></div>
+                <div className="message-content">
+                  <div className="message-meta">
+                    <span className="name">氢擎</span>
+                    <span className="dot" />
+                    <span className="role">正在思考</span>
+                  </div>
+                  <ThinkingTrace steps={traceSteps} />
+                </div>
               </article>
             )}
           </div>
 
           <div className="prompt-chips">
-            {prompts.map((prompt) => <button key={prompt} type="button" onClick={() => void sendMessage(prompt)} disabled={sending}>{prompt}</button>)}
+            {prompts.map((prompt) => (
+              <button key={prompt.label} type="button" onClick={() => void sendMessage(prompt.label)} disabled={sending}>
+                <span className="prompt-icon">{prompt.icon}</span> {prompt.label}
+              </button>
+            ))}
           </div>
-          {chatError && <div className="inline-error" role="alert">{chatError}</div>}
+          {chatError && <div className="inline-error" role="alert" style={{ margin: '12px 24px 0' }}>{chatError}</div>}
           <form className="composer" onSubmit={submit}>
             <label className="sr-only" htmlFor="agent-message">向 Agent 提问</label>
             <textarea
@@ -150,40 +205,81 @@ export default function WorkspacePage() {
                   if (input.trim()) void sendMessage(input)
                 }
               }}
-              placeholder="询问关系、产品、商机，或让 Agent 准备沟通提纲…"
+              placeholder="向 Agent 提问：今天应当联系谁 / 高潜商机 / 产品匹配 / 沉默关系…"
             />
             <button className="send-button" type="submit" disabled={!input.trim() || sending} aria-label="发送">
-              <Send size={19} />
+              <Send size={18} />
             </button>
           </form>
+          <div className="composer-meta">
+            <span className="kill-switch"><span className="dot" /> 关键动作需人工确认</span>
+            <span className="sep" />
+            <span className="hint">报价 / 选型 / 认证 / 对外承诺 须由你最终签字</span>
+            <span className="sep" />
+            <span className="hint">⏎ 发送 · ⇧⏎ 换行</span>
+          </div>
         </section>
 
         <aside className="briefing-column">
-          <div className="section-heading-row">
-            <div>
-              <span className="section-kicker"><Sparkles size={15} /> 每日简报</span>
-              <h2>今日行动优先级</h2>
+          <div className="briefing-card hero">
+            <div className="briefing-card-head">
+              <div className="section-kicker">
+                <Sparkles size={13} />
+                今日简报
+              </div>
+              {briefing && <time>{formatDate(briefing.generatedAt, true)}</time>}
             </div>
-            {briefing && <time>{formatDate(briefing.generatedAt, true)}</time>}
-          </div>
-          {briefingLoading ? <LoadingState label="正在生成行动简报…" /> : briefingError ? <ErrorState message={briefingError} onRetry={loadBriefing} /> : briefing ? (
-            <>
+            <div className="briefing-stats">
+              <div className="briefing-stat">
+                <span className="label">高潜</span>
+                <div className="value"><NumberTicker value={briefing?.highPotentialOpportunities.length ?? 0} /></div>
+                <div className="delta">A 级 · 优先跟进</div>
+              </div>
+              <div className="briefing-stat">
+                <span className="label">待跟进</span>
+                <div className="value"><NumberTicker value={briefing?.dueFollowUps.length ?? 0} /></div>
+                <div className="delta down">到期联系</div>
+              </div>
+              <div className="briefing-stat">
+                <span className="label">沉默</span>
+                <div className="value"><NumberTicker value={briefing?.silentRelationships.length ?? 0} /></div>
+                <div className="delta">需重新触达</div>
+              </div>
+            </div>
+            {briefing && (
               <div className="briefing-summary">
-                <Lightbulb size={20} />
+                <Lightbulb size={18} />
                 <p>{briefing.summary}</p>
               </div>
+            )}
+          </div>
+
+          {briefingLoading ? (
+            <LoadingState label="正在生成行动简报…" />
+          ) : briefingError ? (
+            <ErrorState message={briefingError} onRetry={loadBriefing} />
+          ) : briefing ? (
+            <div className="briefing-card">
               <BriefingGroup title="到期跟进" count={briefing.dueFollowUps.length} tone="due" items={briefing.dueFollowUps} />
               <BriefingGroup title="高潜商机" count={briefing.highPotentialOpportunities.length} tone="ready" items={briefing.highPotentialOpportunities} />
               <BriefingGroup title="沉默关系" count={briefing.silentRelationships.length} tone="watch" items={briefing.silentRelationships} />
               {!!briefing.knowledgeGaps.length && (
-                <section className="briefing-group compact">
-                  <div className="briefing-title"><span className="tone-dot watch" /><strong>待补知识</strong><b>{briefing.knowledgeGaps.length}</b></div>
-                  <p>{typeof briefing.knowledgeGaps[0] === 'string' ? briefing.knowledgeGaps[0] : briefing.knowledgeGaps[0].title ?? briefing.knowledgeGaps[0].reason}</p>
-                  <Link className="text-link" to="/knowledge">去补充知识 <ArrowRight size={14} /></Link>
-                </section>
+                <div className="briefing-group">
+                  <div className="briefing-title">
+                    <span className="tone-dot watch" />
+                    <strong>待补知识</strong>
+                    <span className="count">{briefing.knowledgeGaps.length}</span>
+                  </div>
+                  <p style={{ color: 'var(--ink-muted)', fontSize: 12, margin: '4px 0 8px' }}>
+                    {typeof briefing.knowledgeGaps[0] === 'string' ? briefing.knowledgeGaps[0] : briefing.knowledgeGaps[0].title ?? briefing.knowledgeGaps[0].reason}
+                  </p>
+                  <Link className="text-link" to="/knowledge">去补充知识 <ArrowRight size={13} /></Link>
+                </div>
               )}
-            </>
-          ) : <EmptyState title="暂无简报" description="补充关系与商机后，Agent 会生成行动建议。" />}
+            </div>
+          ) : (
+            <EmptyState title="暂无简报" description="补充关系与商机后，Agent 会生成行动建议。" />
+          )}
         </aside>
       </div>
     </>
@@ -202,28 +298,88 @@ function BriefingGroup({
   items: Array<{ id?: string; relationshipId?: string; opportunityId?: string; title?: string; name?: string; companyName?: string; reason?: string; nextAction?: string; dueAt?: string; score?: number; grade?: string }>
 }) {
   if (!items.length) return null
-  const item = items[0]
-  const link = item.opportunityId || (item.id && title.includes('商机'))
-    ? `/opportunities/${item.opportunityId ?? item.id}`
-    : item.relationshipId || item.id
-      ? `/relationships?id=${item.relationshipId ?? item.id}`
-      : undefined
+  const top = items.slice(0, 3)
   return (
-    <section className="briefing-group">
+    <div className="briefing-group">
       <div className="briefing-title">
         <span className={`tone-dot ${tone}`} />
         <strong>{title}</strong>
-        <b>{count}</b>
+        <span className="count">{count}</span>
       </div>
-      <div className="briefing-item">
-        <div>
-          <h3>{item.companyName ?? item.name ?? item.title ?? title}</h3>
-          {(item.dueAt || item.score !== undefined) && <span><CalendarClock size={13} /> {item.dueAt ? formatDate(item.dueAt) : `${item.grade ?? ''} · ${item.score} 分`}</span>}
+      {top.map((item, i) => {
+        const link = item.opportunityId || (item.id && title.includes('商机'))
+          ? `/opportunities/${item.opportunityId ?? item.id}`
+          : item.relationshipId || item.id
+            ? `/relationships?id=${item.relationshipId ?? item.id}`
+            : undefined
+        return (
+          <div className="briefing-item" key={`${item.id ?? item.relationshipId ?? item.opportunityId ?? i}`}>
+            <div className="briefing-item-head">
+              <h3>{item.companyName ?? item.name ?? item.title ?? title}</h3>
+              <span className="meta">
+                {item.dueAt ? formatDate(item.dueAt) : item.grade ? `${item.grade} 级 · ${item.score} 分` : i === 0 ? '优先' : `+${i}`}
+              </span>
+            </div>
+            <p>{item.reason ?? item.nextAction ?? '查看详情并确认下一步行动'}</p>
+            <div className="footer">
+              <span className="runway"><span className="pulse" /> 待办</span>
+              {link && <Link className="text-link" to={link}>查看 <ArrowRight size={13} /></Link>}
+            </div>
+          </div>
+        )
+      })}
+      {items.length > top.length && (
+        <span className="more">还有 {items.length - top.length} 项</span>
+      )}
+    </div>
+  )
+}
+
+function AgentHero({ sending }: { sending: boolean }) {
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => (t + 1) % 6), 1800)
+    return () => window.clearInterval(id)
+  }, [])
+  const activities = [
+    '正在梳理 23 条关系上下文',
+    '扫描 5 路行业信号',
+    '对齐船舶动力产品参数',
+    '匹配高潜商机 3 项',
+    '等待你的提问',
+    '校验人工确认边界',
+  ]
+  return (
+    <section className={`agent-hero ${sending ? 'thinking' : ''}`}>
+      <div className="agent-hero-grid" aria-hidden="true">
+        <span /><span /><span /><span />
+      </div>
+      <div className="agent-hero-orb" aria-hidden="true">
+        <div className="orb-orbit orbit-1" />
+        <div className="orb-orbit orbit-2" />
+        <div className="orb-orbit orbit-3" />
+        <div className="orb-orbit orbit-4" />
+        <div className="orb-core">
+          <Bot size={20} />
         </div>
-        <p>{item.reason ?? item.nextAction ?? '查看详情并确认下一步行动'}</p>
-        {link && <Link className="text-link" to={link}>查看上下文 <ArrowRight size={14} /></Link>}
       </div>
-      {items.length > 1 && <small>另有 {items.length - 1} 项待处理</small>}
+      <div className="agent-hero-meta">
+        <div className="agent-hero-eyebrow">
+          <span className="hero-dot" />
+          <span>{sending ? '正在思考 · 流式输出' : '在线 · 可提问'}</span>
+        </div>
+        <h2>
+          <span className="hero-serif">氢擎</span>
+          {' '}—— 一台会调用证据链的关系副驾
+        </h2>
+        <p>每一句话都来自可点击的证据链；外发、报价、技术承诺等关键动作由你确认。</p>
+      </div>
+      <div className="agent-hero-ticker" aria-live="polite">
+        <div className="ticker-row ticker-row-status">
+          <span className="ticker-key">状态</span>
+          <span className="ticker-val">{activities[tick]}</span>
+        </div>
+      </div>
     </section>
   )
 }

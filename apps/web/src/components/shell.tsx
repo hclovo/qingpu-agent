@@ -16,15 +16,16 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { Health } from '../lib/types'
 import { ModeBadge } from './ui'
+import { ClockTick } from './console'
 
 const nav = [
-  { to: '/', label: 'Agent 工作台', icon: Bot, end: true },
-  { to: '/dashboard', label: '业务总览', icon: CircleGauge },
-  { to: '/relationships', label: '关系中心', icon: Network },
-  { to: '/knowledge', label: '知识库', icon: BookOpenText },
-  { to: '/opportunities', label: '商机雷达', icon: Radar },
-  { to: '/analyze', label: '信号研判', icon: FlaskConical },
-  { to: '/products', label: '产品知识', icon: Boxes },
+  { to: '/', label: 'Agent 工作台', icon: Bot, key: 'G · 1', end: true },
+  { to: '/dashboard', label: '业务总览', icon: CircleGauge, key: 'G · 2' },
+  { to: '/relationships', label: '关系中心', icon: Network, key: 'G · 3' },
+  { to: '/knowledge', label: '知识库', icon: BookOpenText, key: 'G · 4' },
+  { to: '/opportunities', label: '商机雷达', icon: Radar, key: 'G · 5' },
+  { to: '/analyze', label: '信号研判', icon: FlaskConical, key: 'G · 6' },
+  { to: '/products', label: '产品知识', icon: Boxes, key: 'G · 7' },
 ]
 
 export default function Shell() {
@@ -38,44 +39,79 @@ export default function Shell() {
 
   useEffect(() => setMobileOpen(false), [location.pathname])
 
+  const agentOnline = health?.status === 'ok'
+
   return (
     <div className="app-shell">
-      <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
-        <div className="brand">
-          <div className="brand-mark"><Atom size={25} strokeWidth={1.8} /></div>
-          <div>
-            <strong>氢擎</strong>
-            <span>关系与商机 Agent</span>
+      <div className="status-bar" role="status" aria-label="system status">
+        <div className="status-bar-group">
+          <span className="status-bar-brand">
+            <span className="glyph">◆</span>
+            氢擎 · 工作台
+          </span>
+          <span className="status-bar-divider" />
+          <span className={`status-bar-item ${agentOnline ? 'online' : 'pending'}`}>
+            <span className="dot" />
+            {agentOnline ? '在线' : '连接中'}
+          </span>
+        </div>
+        <div className="status-bar-group">
+          <span className="status-bar-item subtle">运行</span>
+          <span className="status-bar-item">v{health?.version ?? '0.1.0'}</span>
+          <span className="status-bar-divider" />
+          <ClockTick />
+        </div>
+      </div>
+
+      <div className="app-body">
+        <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+          <div className="brand">
+            <div className="brand-mark"><Atom size={20} strokeWidth={1.8} /></div>
+            <div>
+              <strong>氢擎</strong>
+              <span>企业关系与商机 Agent</span>
+            </div>
+            <button type="button" className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="关闭导航">
+              <X size={18} />
+            </button>
           </div>
-          <button type="button" className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="关闭导航"><X size={20} /></button>
-        </div>
-        <div className="nav-section-label">工作空间</div>
-        <nav className="main-nav" aria-label="主导航">
-          {nav.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '')}>
-              <Icon size={18} />
-              <span>{label}</span>
-              <ChevronRight className="nav-chevron" size={14} />
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-spacer" />
-        <div className="mode-card">
-          <span className="mode-card-label">当前运行方式</span>
-          <ModeBadge mode={health?.agentMode ?? 'rules'} model={health?.model} />
-          <p>{health?.agentMode === 'smart' || health?.agentMode === 'intelligent' ? 'Agent 可调用模型研判，关键动作仍需人工确认。' : '核心检索与评分可用；模型能力未启用或已降级。'}</p>
-          <div className="service-line"><span className={health ? 'online-dot' : 'offline-dot'} /> API {health ? '连接正常' : '等待连接'}</div>
-        </div>
-      </aside>
-      {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
-      <main className="main-area">
-        <div className="mobile-topbar">
-          <button type="button" className="icon-button" onClick={() => setMobileOpen(true)} aria-label="打开导航"><Menu size={20} /></button>
-          <span>氢擎 Agent</span>
-          <ModeBadge mode={health?.agentMode ?? 'rules'} />
-        </div>
-        <div className="page-container"><Outlet /></div>
-      </main>
+          <div className="nav-section-label">工作空间</div>
+          <nav className="main-nav" aria-label="主导航">
+            {nav.map(({ to, label, icon: Icon, end, key: kbd }) => (
+              <NavLink key={to} to={to} end={end} className={({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '')}>
+                <Icon size={17} className="shimmer" />
+                <span>{label}</span>
+                <kbd className="nav-key">{kbd}</kbd>
+                <ChevronRight className="nav-chevron" size={14} />
+              </NavLink>
+            ))}
+          </nav>
+          <div className="sidebar-spacer" />
+          <div className="mode-card">
+            <span className="mode-card-label">
+              <span className="dot-pulse" style={{ width: 5, height: 5, borderRadius: 999, background: 'var(--action)', boxShadow: '0 0 6px var(--action-glow)' }} />
+              当前模式
+            </span>
+            <ModeBadge mode={health?.agentMode ?? 'rules'} />
+            <p>{health?.agentMode === 'smart' || health?.agentMode === 'intelligent' ? '调用大模型工具，研判与建议可解释；关键动作仍需人工确认。' : '规则引擎 + 演示信号，完整流程可用；模型能力未启用或已降级。'}</p>
+            <div className="service-line">
+              <span className={agentOnline ? 'online-dot' : 'offline-dot'} />
+              接口 {agentOnline ? '正常' : '待连接'}
+            </div>
+          </div>
+        </aside>
+        {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
+        <main className="main-area">
+          <div className="mobile-topbar">
+            <button type="button" className="icon-button" onClick={() => setMobileOpen(true)} aria-label="打开导航">
+              <Menu size={20} />
+            </button>
+            <span>氢擎 Agent</span>
+            <ModeBadge mode={health?.agentMode ?? 'rules'} />
+          </div>
+          <div className="page-container"><Outlet /></div>
+        </main>
+      </div>
     </div>
   )
 }

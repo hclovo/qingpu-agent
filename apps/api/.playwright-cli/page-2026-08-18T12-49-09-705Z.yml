@@ -1,0 +1,137 @@
+- generic [ref=e3]:
+  - status "system status" [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: ◆
+        - text: HYDROGEN · COCKPIT
+      - generic [ref=e9]: H2-EDGE
+      - generic [ref=e10]: AGENT ONLINE
+    - generic [ref=e11]:
+      - generic [ref=e12]: RUN-ID
+      - generic [ref=e13]: H2-010
+      - generic [ref=e15]: SESS
+      - generic [ref=e16]: UNCN84
+      - generic [ref=e18]: 20:49:09
+  - generic [ref=e19]:
+    - complementary [ref=e20]:
+      - generic [ref=e27]:
+        - strong [ref=e28]: 氢擎
+        - generic [ref=e29]: H2 · Agent Cockpit
+      - generic [ref=e30]: // 工作空间
+      - navigation "主导航" [ref=e31]:
+        - link "Agent 工作台 G · 1" [ref=e32] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e36]: Agent 工作台
+          - generic [ref=e37]: G · 1
+        - link "业务总览 G · 2" [ref=e40] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e45]: 业务总览
+          - generic [ref=e46]: G · 2
+        - link "关系中心 G · 3" [ref=e49] [cursor=pointer]:
+          - /url: /relationships
+          - generic [ref=e55]: 关系中心
+          - generic [ref=e56]: G · 3
+        - link "知识库 G · 4" [ref=e59] [cursor=pointer]:
+          - /url: /knowledge
+          - generic [ref=e62]: 知识库
+          - generic [ref=e63]: G · 4
+        - link "商机雷达 G · 5" [ref=e66] [cursor=pointer]:
+          - /url: /opportunities
+          - generic [ref=e74]: 商机雷达
+          - generic [ref=e75]: G · 5
+        - link "信号研判 G · 6" [ref=e78] [cursor=pointer]:
+          - /url: /analyze
+          - generic [ref=e81]: 信号研判
+          - generic [ref=e82]: G · 6
+        - link "产品知识 G · 7" [ref=e85] [cursor=pointer]:
+          - /url: /products
+          - generic [ref=e96]: 产品知识
+          - generic [ref=e97]: G · 7
+      - generic [ref=e101]:
+        - generic [ref=e102]: CURRENT MODE
+        - 'generic "Model: openai/step-3.7-flash" [ref=e104]':
+          - text: SMART
+          - generic [ref=e108]: · step-3.7-flash
+        - paragraph [ref=e109]: 调用大模型工具，研判与建议可解释；关键动作仍需人工确认。
+        - generic [ref=e110]: API ONLINE · OK
+    - main [ref=e112]:
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - generic [ref=e116]: AGENT · COCKPIT
+            - heading "把每一次联系，变成下一次商机" [level=1] [ref=e117]
+            - paragraph [ref=e118]: 从企业知识、上下游关系和行业信号中，生成今天真正值得行动的建议。
+          - generic [ref=e119]: RULES
+        - generic [ref=e124]:
+          - generic [ref=e134]:
+            - generic [ref=e135]: READY · STREAM IDLE
+            - heading "氢擎 —— 一台会调用证据链的关系副驾" [level=2] [ref=e138]
+            - paragraph [ref=e139]: 每一句话都来自可点击的证据链，关键动作（外发、报价、技术承诺）由你确认。Agent 只提议、不擅作主张。
+          - generic [ref=e140]:
+            - generic [ref=e141]:
+              - generic [ref=e142]: ACTIVITY
+              - generic [ref=e143]: INDEXING RELATIONSHIPS · 23 ENTITIES
+            - generic [ref=e144]:
+              - generic [ref=e145]: CONTEXT
+              - generic [ref=e146]: 6 REL · 7 OPP · 6 KB
+            - generic [ref=e147]:
+              - generic [ref=e148]: GUARDRAIL
+              - generic [ref=e149]: HUMAN-IN-LOOP · ON
+            - generic [ref=e150]:
+              - generic [ref=e151]: RUN-ID
+              - generic [ref=e152]: H2-LDATCF
+        - generic [ref=e153]:
+          - generic [ref=e154]:
+            - generic [ref=e155]:
+              - generic [ref=e156]: AGENT CONSOLE
+              - generic [ref=e159]:
+                - generic [ref=e160]: LIVE
+                - generic [ref=e162]: RULES
+            - article [ref=e167]:
+              - generic [ref=e172]:
+                - generic [ref=e173]:
+                  - generic [ref=e174]: H2-AGENT
+                  - generic [ref=e176]: SYSTEM · ASSISTANT
+                  - generic [ref=e178]: FRAME 001
+                - generic [ref=e179]: 你好，我是氢擎
+            - generic [ref=e181]:
+              - button "◉ 今日应当联系谁" [ref=e182] [cursor=pointer]:
+                - generic [ref=e183]: ◉
+                - text: 今日应当联系谁
+              - button "◎ 高潜商机清单" [ref=e184] [cursor=pointer]:
+                - generic [ref=e185]: ◎
+                - text: 高潜商机清单
+              - button "◇ 船舶动力场景产品" [ref=e186] [cursor=pointer]:
+                - generic [ref=e187]: ◇
+                - text: 船舶动力场景产品
+              - button "◈ 沉默关系盘点" [ref=e188] [cursor=pointer]:
+                - generic [ref=e189]: ◈
+                - text: 沉默关系盘点
+            - generic [ref=e190]:
+              - generic [ref=e191]: 向 Agent 提问
+              - textbox "向 Agent 提问" [ref=e192]:
+                - /placeholder: 向 Agent 提问：今日跟进 / 高潜商机 / 产品匹配 / 沉默关系…
+              - button "发送" [disabled] [ref=e193]
+            - generic [ref=e197]:
+              - generic [ref=e198]: Human-in-the-loop
+              - generic [ref=e201]: 报价 / 选型 / 认证 / 对外承诺 必须人工确认
+              - generic [ref=e203]: ⏎ send · ⇧⏎ newline
+          - complementary [ref=e204]:
+            - generic [ref=e205]:
+              - generic [ref=e206]: DAILY BRIEFING
+              - generic [ref=e211]:
+                - generic [ref=e212]:
+                  - generic [ref=e213]: High
+                  - generic [ref=e214]: "0"
+                  - generic [ref=e215]: ▲ A-grade
+                - generic [ref=e216]:
+                  - generic [ref=e217]: Due
+                  - generic [ref=e218]: "0"
+                  - generic [ref=e219]: ▼ follow-up
+                - generic [ref=e220]:
+                  - generic [ref=e221]: Silent
+                  - generic [ref=e222]: "0"
+                  - generic [ref=e223]: ▲ watch
+            - status [ref=e224]:
+              - strong [ref=e227]: 正在生成行动简报…
+              - generic [ref=e228]: 正在整理业务上下文，请稍候

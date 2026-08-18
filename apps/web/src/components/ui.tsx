@@ -8,32 +8,32 @@ export function PageHeader({
   title,
   description,
   actions,
+  meta,
 }: {
   eyebrow?: string
   title: string
   description: string
   actions?: ReactNode
+  meta?: ReactNode
 }) {
   return (
     <header className="page-header">
-      <div>
+      <div className="page-header-main">
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <h1>{title}</h1>
         <p>{description}</p>
+        {meta && <div className="page-header-meta">{meta}</div>}
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </header>
   )
 }
 
-export function ModeBadge({ mode, model }: { mode?: AgentMode; model?: string }) {
+export function ModeBadge({ mode }: { mode?: AgentMode; model?: string }) {
   const kind = mode === 'smart' || mode === 'intelligent' ? 'smart' : mode === 'demo' ? 'demo' : 'rules'
-  return (
-    <span className={`mode-badge ${kind}`} title={model ? `模型：${model}` : undefined}>
-      {kind === 'smart' ? <Sparkles size={14} /> : kind === 'demo' ? <WifiOff size={14} /> : <CheckCircle2 size={14} />}
-      {displayMode(mode)}
-    </span>
-  )
+  const Icon = kind === 'smart' ? Sparkles : kind === 'demo' ? WifiOff : CheckCircle2
+  const tag = kind === 'smart' ? '智能' : kind === 'demo' ? '演示' : '规则'
+  return <span className={`mode-badge ${kind}`}><Icon size={12} />{tag}</span>
 }
 
 export function StatusBadge({ value, label }: { value: string; label?: string }) {
@@ -85,8 +85,8 @@ export function Drawer({ title, subtitle, onClose, children }: { title: string; 
             <h2>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="关闭">
-            ×
+          <button type="button" className="button ghost small icon-circle" onClick={onClose} aria-label="关闭">
+            ✕
           </button>
         </header>
         <div className="drawer-body">{children}</div>
@@ -95,13 +95,11 @@ export function Drawer({ title, subtitle, onClose, children }: { title: string; 
   )
 }
 
-export function ProgressBar({ value, max = 100, label }: { value: number; max?: number; label?: string }) {
+export function ProgressBar({ value, max = 100, label, pending }: { value: number; max?: number; label?: string; pending?: boolean }) {
   const width = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0
   return (
-    <div className="progress-wrap" aria-label={label}>
-      <div className="progress-track">
-        <span style={{ width: `${width}%` }} />
-      </div>
+    <div className={`progress-track ${pending ? 'span-pending' : ''}`} aria-label={label}>
+      <span style={{ width: `${width}%` }} />
     </div>
   )
 }
