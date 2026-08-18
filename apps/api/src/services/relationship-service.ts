@@ -1,41 +1,46 @@
-import type { AgentBriefing, Relationship } from '@qingpu/contracts'
-import type { MemoryStore } from '../store/memory-store.js'
+import type { AgentBriefing, Opportunity, Relationship } from '@qingpu/contracts'
+import type { BusinessStore } from '../store/store.js'
 
 export class RelationshipService {
-  constructor(private readonly store: MemoryStore) {}
+  constructor(private readonly store: BusinessStore) {}
 
   list(role?: Relationship['role']) {
     return this.store.listRelationships(role)
   }
 
-  get(id: string) {
-    const relationship = this.store.getRelationship(id)
+  async get(id: string) {
+    const relationship = await this.store.getRelationship(id)
     if (!relationship) return undefined
+    const [relatedOpportunities, knowledge] = await Promise.all([
+      Promise.all(relationship.opportunityIds.map((opportunityId) => this.store.getOpportunity(opportunityId))),
+      this.store.listKnowledge(),
+    ])
     return {
       ...relationship,
-      relatedOpportunities: relationship.opportunityIds
-        .map((opportunityId) => this.store.getOpportunity(opportunityId))
-        .filter((item) => item !== undefined),
-      relatedKnowledge: this.store.listKnowledge().filter((item) => item.relationshipIds.includes(id)),
+      relatedOpportunities: relatedOpportunities.filter((item) => item !== undefined),
+      relatedKnowledge: knowledge.filter((item) => item.relationshipIds.includes(id)),
     }
   }
 
-  addTouchpoint(id: string, input: Parameters<MemoryStore['addTouchpoint']>[1]) {
+  addTouchpoint(id: string, input: Parameters<BusinessStore['addTouchpoint']>[1]) {
     return this.store.addTouchpoint(id, input)
   }
 
-  briefing(now = new Date()): AgentBriefing & {
+  async briefing(now = new Date()): Promise<AgentBriefing & {
     mode: 'rules'
     dueFollowUps: Relationship[]
     silentRelationships: Relationship[]
-    highPotentialOpportunities: ReturnType<MemoryStore['listOpportunities']>
+    highPotentialOpportunities: Opportunity[]
     knowledgeGaps: string[]
     suggestedActions: string[]
-  } {
-    const relationships = this.store.listRelationships()
+  }> {
+    const [relationships, opportunities] = await Promise.all([
+      this.store.listRelationships(),
+      this.store.listOpportunities(),
+    ])
     const dueFollowUps = relationships.filter((item) => item.nextActionAt && new Date(item.nextActionAt) <= now)
     const silentRelationships = relationships.filter((item) => !item.lastContactAt || now.getTime() - new Date(item.lastContactAt).getTime() > 45 * 86_400_000)
-    const highPotentialOpportunities = this.store.listOpportunities().filter((item) => item.grade === 'A').slice(0, 5)
+    const highPotentialOpportunities = opportunities.filter((item) => item.grade === 'A').slice(0, 5)
     const knowledgeGaps = [
       ...(relationships.some((item) => item.role === 'supplier' && item.health !== 'healthy') ? ['上游厂商交期与产能信息需要更新'] : []),
       ...(highPotentialOpportunities.some((item) => item.productMatches.some((match) => match.gaps.length)) ? ['高优先级商机仍缺功率、工况或认证确认'] : []),

@@ -1,13 +1,13 @@
 import type { AgentChatInput, AgentChatResponse } from '@qingpu/contracts'
 import type { MastraRuntime } from '../mastra/index.js'
-import type { MemoryStore } from '../store/memory-store.js'
+import type { BusinessStore } from '../store/store.js'
 import type { RelationshipService } from './relationship-service.js'
 
 type ChatResult = AgentChatResponse & { fallbackReason?: string; needsConfirmation?: string[] }
 
 export class AgentService {
   constructor(
-    private readonly store: MemoryStore,
+    private readonly store: BusinessStore,
     private readonly runtime: MastraRuntime,
     private readonly relationships: RelationshipService,
   ) {}
@@ -33,27 +33,28 @@ export class AgentService {
     return this.rulesChat(input, '未配置受支持的模型密钥，已使用本地规则与企业数据回答。')
   }
 
-  private rulesChat(input: AgentChatInput, fallbackReason: string): ChatResult {
+  private async rulesChat(input: AgentChatInput, fallbackReason: string): Promise<ChatResult> {
     const message = input.message.toLowerCase()
     const generatedAt = new Date().toISOString()
     const base = { mode: 'rules' as const, generatedAt, fallbackReason, needsConfirmation: ['任何外部联系、报价和技术承诺需人工确认'] }
 
     if (input.relationshipId || /客户|潜客|关系|供应商|上游|伙伴|联系|跟进/u.test(message)) {
-      const relationship = input.relationshipId ? this.store.getRelationship(input.relationshipId) : undefined
-      const rows = relationship ? [relationship] : this.store.listRelationships().slice(0, 5)
+      const allRelationships = await this.store.listRelationships()
+      const relationship = input.relationshipId ? await this.store.getRelationship(input.relationshipId) : undefined
+      const rows = relationship ? [relationship] : allRelationships.slice(0, 5)
       return {
         ...base,
         answer: relationship
           ? `${relationship.name}当前关系健康度为 ${relationship.health}（${relationship.healthScore}/100）。最近联系：${relationship.lastContactAt?.slice(0, 10) ?? '暂无记录'}；下一步：${relationship.nextAction ?? '待补充'}。${relationship.isDemo ? '该对象为显著标识的模拟数据。' : ''}`
-          : `当前共维护 ${this.store.listRelationships().length} 个关系对象。优先关注：${rows.map((item) => `${item.name}（${item.health}，下一步：${item.nextAction ?? '待补充'}）`).join('；')}。`,
+          : `当前共维护 ${allRelationships.length} 个关系对象。优先关注：${rows.map((item) => `${item.name}（${item.health}，下一步：${item.nextAction ?? '待补充'}）`).join('；')}。`,
         citations: rows.map((item) => ({ title: item.name, source: item.sourceKind, excerpt: item.description })),
         suggestedActions: rows.slice(0, 3).map((item) => item.nextAction ?? `补充 ${item.name} 的下一步行动`),
       }
     }
 
     if (/知识|资料|产品册|宣传册|案例|参数/u.test(message)) {
-      const rows = this.store.searchKnowledge(input.message, 5)
-      const selected = rows.length ? rows : this.store.listKnowledge().slice(0, 4)
+      const rows = await this.store.searchKnowledge(input.message, 5)
+      const selected = rows.length ? rows : (await this.store.listKnowledge()).slice(0, 4)
       return {
         ...base,
         answer: selected.length
@@ -65,8 +66,9 @@ export class AgentService {
     }
 
     if (/产品|电堆|船用|车用|制氢|ocean|cesp|e200/u.test(message)) {
-      const products = this.store.listProducts().filter((item) => [item.model, item.family, ...item.scenarios].join(' ').toLowerCase().split(/\s+/).some((term) => term && message.includes(term.toLowerCase())))
-      const selected = (products.length ? products : this.store.listProducts()).slice(0, 5)
+      const allProducts = await this.store.listProducts()
+      const products = allProducts.filter((item) => [item.model, item.family, ...item.scenarios].join(' ').toLowerCase().split(/\s+/).some((term) => term && message.includes(term.toLowerCase())))
+      const selected = (products.length ? products : allProducts).slice(0, 5)
       return {
         ...base,
         answer: `产品候选：${selected.map((item) => `${item.model}（${item.family}，${item.ratedPower}）`).join('；')}。这些参数仅用于线索预筛，不替代正式选型。`,
@@ -76,8 +78,8 @@ export class AgentService {
     }
 
     if (input.opportunityId || /商机|线索|机会|高潜|评分/u.test(message)) {
-      const opportunity = input.opportunityId ? this.store.getOpportunity(input.opportunityId) : undefined
-      const rows = opportunity ? [opportunity] : this.store.listOpportunities().slice(0, 5)
+      const opportunity = input.opportunityId ? await this.store.getOpportunity(input.opportunityId) : undefined
+      const rows = opportunity ? [opportunity] : (await this.store.listOpportunities()).slice(0, 5)
       return {
         ...base,
         answer: opportunity
@@ -88,7 +90,7 @@ export class AgentService {
       }
     }
 
-    const briefing = this.relationships.briefing()
+    const briefing = await this.relationships.briefing()
     return {
       ...base,
       answer: `${briefing.summary} 建议先处理：${briefing.items.slice(0, 3).map((item) => item.title).join('；')}。你也可以问我某个客户、供应商、产品或商机。`,

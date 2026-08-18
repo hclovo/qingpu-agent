@@ -1,12 +1,15 @@
 import type { Dashboard } from '@qingpu/contracts'
-import type { MemoryStore } from '../store/memory-store.js'
+import type { BusinessStore } from '../store/store.js'
 
 export class DashboardService {
-  constructor(private readonly store: MemoryStore) {}
+  constructor(private readonly store: BusinessStore) {}
 
-  get(): Dashboard & { stageDistribution: Record<string, number>; agentMode: 'intelligent' | 'rules' } {
-    const opportunities = this.store.listOpportunities()
-    const relationships = this.store.listRelationships()
+  async get(): Promise<Dashboard & { stageDistribution: Record<string, number>; agentMode: 'intelligent' | 'rules' }> {
+    const [opportunities, relationships, knowledge] = await Promise.all([
+      this.store.listOpportunities(),
+      this.store.listRelationships(),
+      this.store.listKnowledge(),
+    ])
     const weekAgo = Date.now() - 7 * 86_400_000
     const countBy = (values: string[]) => values.reduce<Record<string, number>>((result, value) => {
       result[value] = (result[value] ?? 0) + 1
@@ -20,7 +23,7 @@ export class DashboardService {
       averageScore: opportunities.length ? Math.round(opportunities.reduce((sum, item) => sum + item.score, 0) / opportunities.length * 10) / 10 : 0,
       relationshipTotal: relationships.length,
       relationshipAttention: relationships.filter((item) => item.health !== 'healthy').length,
-      knowledgeTotal: this.store.listKnowledge().length,
+      knowledgeTotal: knowledge.length,
       gradeDistribution: { A: 0, B: 0, C: 0, D: 0, ...countBy(opportunities.map((item) => item.grade)) },
       industryDistribution: Object.entries(industryCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
       topOpportunities: opportunities.slice(0, 5),

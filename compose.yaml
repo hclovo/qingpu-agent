@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: qingpu_agent
+      POSTGRES_USER: qingpu
+      POSTGRES_PASSWORD: qingpu
+    ports:
+      - "5432:5432"
+    volumes:
+      - qingpu_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qingpu -d qingpu_agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  qingpu_postgres_data:

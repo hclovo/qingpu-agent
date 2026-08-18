@@ -9,7 +9,7 @@ import type {
   ProductMatch,
   ScoreResult,
 } from '@qingpu/contracts'
-import type { MemoryStore } from '../store/memory-store.js'
+import type { BusinessStore } from '../store/store.js'
 import { createAgents } from './agents.js'
 import { createBusinessTools } from './tools.js'
 
@@ -105,7 +105,7 @@ export class MastraRuntime {
   readonly mastra: Mastra
   private readonly agents: ReturnType<typeof createAgents>
 
-  constructor(store: MemoryStore) {
+  constructor(store: BusinessStore) {
     const config = resolveRuntimeModel()
     this.model = config.model
     this.intelligent = config.enabled

@@ -3,25 +3,18 @@ import type {
   CreateTouchpointInput,
   KnowledgeItem,
   Opportunity,
-  OpportunityGrade,
-  OpportunityStage,
   Product,
   Relationship,
 } from '@qingpu/contracts'
 import { relationshipHealth } from '@qingpu/domain'
 import { createSeedData } from '../data/seed.js'
-
-export interface OpportunityFilters {
-  q?: string
-  industry?: string
-  grade?: OpportunityGrade
-  stage?: OpportunityStage
-}
+import type { BusinessStore, OpportunityFilters } from './store.js'
 
 const clone = <T>(value: T): T => structuredClone(value)
 const makeId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`
 
-export class MemoryStore {
+export class MemoryStore implements BusinessStore {
+  readonly kind = 'memory' as const
   private products: Product[]
   private relationships: Relationship[]
   private knowledge: KnowledgeItem[]
@@ -34,21 +27,21 @@ export class MemoryStore {
     this.opportunities = seed.opportunities
   }
 
-  listProducts(): Product[] {
+  async listProducts(): Promise<Product[]> {
     return clone(this.products)
   }
 
-  listRelationships(role?: Relationship['role']): Relationship[] {
+  async listRelationships(role?: Relationship['role']): Promise<Relationship[]> {
     const rows = role ? this.relationships.filter((item) => item.role === role) : this.relationships
     return clone(rows.sort((a, b) => b.healthScore - a.healthScore))
   }
 
-  getRelationship(id: string): Relationship | undefined {
+  async getRelationship(id: string): Promise<Relationship | undefined> {
     const row = this.relationships.find((item) => item.id === id)
     return row ? clone(row) : undefined
   }
 
-  addTouchpoint(id: string, input: CreateTouchpointInput): Relationship | undefined {
+  async addTouchpoint(id: string, input: CreateTouchpointInput): Promise<Relationship | undefined> {
     const relationship = this.relationships.find((item) => item.id === id)
     if (!relationship) return undefined
     const timestamp = new Date().toISOString()
@@ -68,7 +61,7 @@ export class MemoryStore {
     return clone(relationship)
   }
 
-  listKnowledge(query?: string, status?: KnowledgeItem['status']): KnowledgeItem[] {
+  async listKnowledge(query?: string, status?: KnowledgeItem['status']): Promise<KnowledgeItem[]> {
     const needle = query?.trim().toLowerCase()
     return clone(this.knowledge
       .filter((item) => !status || item.status === status)
@@ -76,7 +69,7 @@ export class MemoryStore {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)))
   }
 
-  searchKnowledge(query: string, limit = 8): KnowledgeItem[] {
+  async searchKnowledge(query: string, limit = 8): Promise<KnowledgeItem[]> {
     const terms = query.toLowerCase().split(/\s+/u).filter(Boolean)
     return clone(this.knowledge
       .map((item) => {
@@ -95,11 +88,13 @@ export class MemoryStore {
       .map(({ item }) => item))
   }
 
-  createKnowledge(input: CreateKnowledgeInput): KnowledgeItem {
+  async createKnowledge(input: CreateKnowledgeInput): Promise<KnowledgeItem> {
     const timestamp = new Date().toISOString()
     const item: KnowledgeItem = {
       id: makeId('knowledge'),
       ...input,
+      tags: [...new Set(input.tags)],
+      relationshipIds: [...new Set(input.relationshipIds)],
       status: input.type === 'file' && !/\.(txt|md|csv|json)$/iu.test(input.sourcePath ?? '') ? 'pending' : 'ready',
       isDemo: input.sourceKind === 'demo-simulated',
       createdAt: timestamp,
@@ -109,7 +104,7 @@ export class MemoryStore {
     return clone(item)
   }
 
-  listOpportunities(filters: OpportunityFilters = {}): Opportunity[] {
+  async listOpportunities(filters: OpportunityFilters = {}): Promise<Opportunity[]> {
     const needle = filters.q?.trim().toLowerCase()
     return clone(this.opportunities
       .filter((item) => !filters.industry || item.industry === filters.industry)
@@ -119,12 +114,12 @@ export class MemoryStore {
       .sort((a, b) => b.score - a.score || b.updatedAt.localeCompare(a.updatedAt)))
   }
 
-  getOpportunity(id: string): Opportunity | undefined {
+  async getOpportunity(id: string): Promise<Opportunity | undefined> {
     const row = this.opportunities.find((item) => item.id === id)
     return row ? clone(row) : undefined
   }
 
-  createOpportunity(opportunity: Opportunity): Opportunity {
+  async createOpportunity(opportunity: Opportunity): Promise<Opportunity> {
     this.opportunities.unshift(clone(opportunity))
     if (opportunity.relationshipId) {
       const relationship = this.relationships.find((item) => item.id === opportunity.relationshipId)
@@ -136,7 +131,7 @@ export class MemoryStore {
     return clone(opportunity)
   }
 
-  updateOpportunityStage(id: string, stage: OpportunityStage): Opportunity | undefined {
+  async updateOpportunityStage(id: string, stage: Opportunity['stage']): Promise<Opportunity | undefined> {
     const opportunity = this.opportunities.find((item) => item.id === id)
     if (!opportunity) return undefined
     opportunity.stage = stage
@@ -144,7 +139,7 @@ export class MemoryStore {
     return clone(opportunity)
   }
 
-  hasOpportunityFingerprint(companyName: string, title: string): boolean {
+  async hasOpportunityFingerprint(companyName: string, title: string): Promise<boolean> {
     const normalize = (value: string) => value.trim().toLowerCase()
     return this.opportunities.some((item) => normalize(item.companyName) === normalize(companyName) && normalize(item.title) === normalize(title))
   }
