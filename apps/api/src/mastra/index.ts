@@ -91,7 +91,10 @@ function extractStructured<T>(result: unknown, schema: z.ZodType<T>): T {
   throw new Error('模型未返回可解析的结构化结果')
 }
 
-function timeout<T>(promise: Promise<T>, milliseconds = 18_000): Promise<T> {
+// 推理型模型（如 step-3.7-flash）的结构化研判耗时明显高于普通对话模型，可用环境变量按服务商调整。
+const AGENT_TIMEOUT_MS = Number(process.env.AGENT_TIMEOUT_MS?.trim()) || 45_000
+
+function timeout<T>(promise: Promise<T>, milliseconds = AGENT_TIMEOUT_MS): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Agent 调用超时')), milliseconds)),
@@ -139,7 +142,7 @@ export class MastraRuntime {
     const result = await timeout(this.agents.opportunityResearchAgent.generate(
       `使用 webSearchTool 搜索最近 ${days} 天的“${query}”${region ? `，地区限定：${region}` : ''}。只返回有来源 URL 的企业级商机候选。`,
       { structuredOutput: { schema: ResearchOutputSchema, jsonPromptInjection: 'auto' } },
-    ), 25_000)
+    ), AGENT_TIMEOUT_MS + 10_000)
     return extractStructured(result, ResearchOutputSchema).candidates
   }
 }
