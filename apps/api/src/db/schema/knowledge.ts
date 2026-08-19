@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import { boolean, index, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
 import { knowledgeStatusEnum, knowledgeTypeEnum, sourceKindEnum } from './enums.js'
 import { relationships } from './relationships.js'
+import { users } from './users.js'
 
 export const knowledgeItems = pgTable('knowledge_items', {
   id: text('id').primaryKey(),
@@ -13,6 +14,7 @@ export const knowledgeItems = pgTable('knowledge_items', {
   status: knowledgeStatusEnum('status').notNull(),
   sourceKind: sourceKindEnum('source_kind').notNull(),
   isDemo: boolean('is_demo').generatedAlwaysAs(sql`source_kind = 'demo-simulated'`).notNull(),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

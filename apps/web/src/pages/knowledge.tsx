@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { BookOpenCheck, Check, FileJson, FileText, Link2, Plus, Search, Tags, UploadCloud } from 'lucide-react'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { displaySource, formatDate, knowledgeStatusLabels } from '../lib/format'
 import type { KnowledgeItem } from '../lib/types'
 import { Drawer, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from '../components/ui'
@@ -9,6 +10,8 @@ import { NumberTicker } from '../components/console'
 type KnowledgeType = 'text' | 'url' | 'file'
 
 export default function KnowledgePage() {
+  const { has } = useAuth()
+  const canWrite = has('knowledge.write')
   const [items, setItems] = useState<KnowledgeItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -39,7 +42,7 @@ export default function KnowledgePage() {
       <PageHeader
         title="企业知识库"
         description="补充企业资料、网页与业务记录，让 Agent 的每个回答都有可靠上下文。"
-        actions={<button type="button" className="button primary" onClick={() => setOpen(true)}><Plus size={16} /> 新增知识</button>}
+        actions={canWrite ? <button type="button" className="button primary" onClick={() => setOpen(true)}><Plus size={16} /> 新增知识</button> : undefined}
       />
       <section className="knowledge-stats">
         <div><BookOpenCheck size={18} /><span>条目<strong><NumberTicker value={items.length} /></strong></span></div>
@@ -77,9 +80,9 @@ export default function KnowledgePage() {
               </article>
             ))}
           </div>
-        ) : <EmptyState title={search ? '没有匹配的知识' : '知识库还是空的'} description={search ? '尝试更换关键词，或补充新的知识条目。' : '添加文本、网页或文本类文件，为 Agent 建立企业上下文。'} action={<button className="button primary small" type="button" onClick={() => setOpen(true)}><Plus size={14} /> 新增知识</button>} />}
+        ) : <EmptyState title={search ? '没有匹配的知识' : '知识库还是空的'} description={search ? '尝试更换关键词，或补充新的知识条目。' : '添加文本、网页或文本类文件，为 Agent 建立企业上下文。'} action={canWrite ? <button className="button primary small" type="button" onClick={() => setOpen(true)}><Plus size={14} /> 新增知识</button> : undefined} />}
       </section>
-      {open && <Drawer title="新增知识" subtitle="保存后即可用于检索和 Agent 上下文" onClose={() => setOpen(false)}><KnowledgeForm onCreated={(item) => { setItems((current) => [item, ...current]); setOpen(false) }} /></Drawer>}
+      {canWrite && open && <Drawer title="新增知识" subtitle="保存后即可用于检索和 Agent 上下文" onClose={() => setOpen(false)}><KnowledgeForm onCreated={(item) => { setItems((current) => [item, ...current]); setOpen(false) }} /></Drawer>}
     </>
   )
 }

@@ -8,8 +8,12 @@ import type {
   KnowledgeItem,
   Opportunity,
   OpportunityStage,
+  Permission,
+  PermissionCatalogGroup,
   Product,
+  PublicUser,
   Relationship,
+  Role,
 } from './types'
 
 type ApiEnvelope<T> = T | { data: T }
@@ -31,6 +35,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(`/api${path}`, {
       ...init,
+      credentials: 'include',
       headers: {
         ...(init?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...init?.headers,
@@ -111,4 +116,22 @@ export const api = {
       body: JSON.stringify({ stage }),
     }),
   products: () => request<Product[]>('/products'),
+  me: () => request<{ user: PublicUser }>('/me'),
+  login: (email: string, password: string) =>
+    request<{ user: PublicUser }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST', body: JSON.stringify({}) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ user: PublicUser }>('/me/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
+  users: () => request<PublicUser[]>('/users'),
+  createUser: (input: { email: string; displayName: string; roleIds: string[]; password: string }) =>
+    request<PublicUser>('/users', { method: 'POST', body: JSON.stringify(input) }),
+  updateUser: (id: string, input: { displayName?: string; roleIds?: string[]; status?: 'active' | 'disabled'; password?: string }) =>
+    request<PublicUser>(`/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  roles: () => request<Role[]>('/roles'),
+  createRole: (input: { code: string; name: string; description?: string; permissionCodes?: Permission[]; copyFromRoleId?: string }) =>
+    request<Role>('/roles', { method: 'POST', body: JSON.stringify(input) }),
+  updateRole: (id: string, input: { name?: string; description?: string; permissionCodes?: Permission[] }) =>
+    request<Role>(`/roles/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  deleteRole: (id: string) => request<{ ok: boolean }>(`/roles/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  permissionCatalog: () => request<PermissionCatalogGroup[]>('/permissions'),
 }

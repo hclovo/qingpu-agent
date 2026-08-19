@@ -16,6 +16,16 @@ export const roleLabels: Record<string, string> = {
   partner: '生态伙伴',
 }
 
+export const userRoleLabels: Record<string, string> = {
+  sales: '市场销售',
+  supply: '供应链',
+  sales_lead: '销售主管',
+  presales: '售前',
+  admin: '系统管理员',
+  viewer: '观察者',
+  anonymous: '游客',
+}
+
 export const modeLabels: Record<string, string> = {
   smart: '智能模式',
   intelligent: '智能模式',

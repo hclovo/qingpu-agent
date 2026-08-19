@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Building2, CalendarClock, Check, Factory, Handshake, History, MessageSquarePlus, Search, UserSearch } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { displaySource, formatDate, roleLabels } from '../lib/format'
 import type { Relationship } from '../lib/types'
 import { Drawer, EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge } from '../components/ui'
@@ -128,6 +129,8 @@ export default function RelationshipsPage() {
 }
 
 function RelationshipDetail({ relationship, onUpdated }: { relationship: Relationship; onUpdated: (value: Relationship) => void }) {
+  const { has } = useAuth()
+  const canTouch = has('relationships.touch')
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -185,9 +188,11 @@ function RelationshipDetail({ relationship, onUpdated }: { relationship: Relatio
     </section>
     <div className="detail-section-title">
       <div><History size={16} /><h3>互动时间线</h3></div>
-      <button className="button primary small" type="button" onClick={() => setShowForm((value) => !value)}>
-        <MessageSquarePlus size={14} /> 记录互动
-      </button>
+      {canTouch && (
+        <button className="button primary small" type="button" onClick={() => setShowForm((value) => !value)}>
+          <MessageSquarePlus size={14} /> 记录互动
+        </button>
+      )}
     </div>
     {showForm && <form className="touchpoint-form form-grid" onSubmit={submit}>
       <label><span>互动日期 *</span><input required name="occurredAt" type="date" defaultValue={new Date().toISOString().slice(0, 10)} /></label>

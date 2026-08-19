@@ -2,11 +2,66 @@ export type AgentMode = 'smart' | 'rules' | 'demo' | string
 export type SourceType = 'public' | 'enterprise-provided' | 'demo-simulated' | string
 export type OpportunityStage = 'new' | 'verifying' | 'qualified' | 'engaging' | 'converted' | 'closed'
 
+export type Permission =
+  | 'agent.chat'
+  | 'agent.briefing'
+  | 'dashboard.read'
+  | 'relationships.read'
+  | 'relationships.touch'
+  | 'knowledge.read'
+  | 'knowledge.write'
+  | 'opportunities.read'
+  | 'opportunities.analyze'
+  | 'opportunities.discover'
+  | 'opportunities.stage'
+  | 'products.read'
+  | 'products.review'
+  | 'users.read'
+  | 'users.manage'
+  | 'roles.read'
+  | 'roles.manage'
+  | 'session.self'
+
+export type PublicUserRole = string
+
+export interface RoleSummary {
+  id: string
+  code: string
+  name: string
+}
+
+export interface Role extends RoleSummary {
+  description: string
+  isSystem: boolean
+  sortOrder: number
+  permissions: Permission[]
+}
+
+export interface PermissionCatalogGroup {
+  group: string
+  items: Array<{ code: Permission; label: string }>
+}
+
+export interface PublicUser {
+  id: string
+  email: string
+  displayName: string
+  role: PublicUserRole
+  roles?: RoleSummary[]
+  status: 'active' | 'disabled'
+  permissions: Permission[]
+  mustChangePassword: boolean
+  isSeed: boolean
+  lastLoginAt?: string
+  createdAt?: string
+}
+
 export interface Health {
   status: string
   version?: string
   agentMode: AgentMode
   model?: string
+  authRequired?: boolean
 }
 
 export interface Citation {

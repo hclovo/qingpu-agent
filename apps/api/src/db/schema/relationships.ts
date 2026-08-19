@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { boolean, check, index, integer, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
 import { relationshipHealthEnum, relationshipRoleEnum, sourceKindEnum, touchpointChannelEnum } from './enums.js'
+import { users } from './users.js'
 
 export const relationships = pgTable('relationships', {
   id: text('id').primaryKey(),
@@ -41,5 +42,6 @@ export const touchpoints = pgTable('touchpoints', {
   outcome: text('outcome').notNull().default('待复盘'),
   nextAction: text('next_action'),
   nextActionAt: timestamp('next_action_at', { withTimezone: true }),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index('idx_touchpoints_relationship_occurred').on(table.relationshipId, table.occurredAt.desc())])
