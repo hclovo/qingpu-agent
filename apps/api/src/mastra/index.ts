@@ -11,6 +11,7 @@ import type {
 } from '@qingpu/contracts'
 import type { BusinessStore } from '../store/store.js'
 import { createAgents } from './agents.js'
+import { buildDiscoverPrompt, collectDiscoverMaterials } from './tavily.js'
 import { createBusinessTools } from './tools.js'
 
 const SmartChatSchema = z.object({
@@ -18,6 +19,18 @@ const SmartChatSchema = z.object({
   citations: z.array(z.object({ title: z.string(), source: z.string(), excerpt: z.string() })),
   suggestedActions: z.array(z.string()),
 })
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/** 不用 z.string().url()：部分兼容网关会拒绝 JSON Schema 的 format=uri。 */
+export const HttpUrlSchema = z.string().min(8).refine(isHttpUrl, { message: '必须是有效的 http(s) URL' })
 
 export const ResearchCandidateSchema = z.object({
   companyName: z.string(),
@@ -27,13 +40,17 @@ export const ResearchCandidateSchema = z.object({
   region: z.string(),
   signalType: z.enum(['procurement', 'project', 'policy', 'operation', 'partnership']),
   sourceTitle: z.string(),
-  sourceUrl: z.string().url(),
+  sourceUrl: HttpUrlSchema,
   occurredAt: z.string(),
   expectedScale: z.string().optional(),
   confidence: z.number().min(0).max(1),
 })
 
-const ResearchOutputSchema = z.object({ candidates: z.array(ResearchCandidateSchema).max(8) })
+export const ResearchOutputSchema = z.object({ candidates: z.array(ResearchCandidateSchema).max(8) })
+
+export function shouldFallbackStructuredOutput(message: string): boolean {
+  return /STRUCTURED_OUTPUT_SCHEMA_VALIDATION_FAILED|Invalid schema for response_format|is not a valid format/i.test(message)
+}
 
 export type ResearchCandidate = z.infer<typeof ResearchCandidateSchema>
 
@@ -93,12 +110,19 @@ function extractStructured<T>(result: unknown, schema: z.ZodType<T>): T {
 
 // 推理型模型（如 step-3.7-flash）的结构化研判耗时明显高于普通对话模型，可用环境变量按服务商调整。
 const AGENT_TIMEOUT_MS = Number(process.env.AGENT_TIMEOUT_MS?.trim()) || 45_000
+const DISCOVER_TIMEOUT_MS = Number(process.env.DISCOVER_TIMEOUT_MS?.trim()) || AGENT_TIMEOUT_MS + 45_000
 
 function timeout<T>(promise: Promise<T>, milliseconds = AGENT_TIMEOUT_MS): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Agent 调用超时')), milliseconds)),
-  ])
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Agent 调用超时')), milliseconds)
+    promise.then((value) => {
+      clearTimeout(timer)
+      resolve(value)
+    }, (error) => {
+      clearTimeout(timer)
+      reject(error)
+    })
+  })
 }
 
 export class MastraRuntime {
@@ -138,18 +162,20 @@ export class MastraRuntime {
 
   async discover(query: string, region: string | undefined, days: number): Promise<ResearchCandidate[]> {
     if (!this.intelligent) throw new Error('未配置受支持的模型密钥')
-    if (!process.env.TAVILY_API_KEY?.trim()) throw new Error('未配置实时搜索服务密钥')
-    const prompt = `使用 webSearchTool 搜索最近 ${days} 天的”${query}”${region ? `，地区限定：${region}` : ''}。只返回有来源 URL 的企业级商机候选。`
+    const apiKey = process.env.TAVILY_API_KEY?.trim()
+    if (!apiKey) throw new Error('未配置实时搜索服务密钥')
+    const { materials, notices } = await collectDiscoverMaterials(apiKey, { query, region, days })
+    const prompt = buildDiscoverPrompt(query, region, days, materials, notices)
     try {
-      const result = await timeout(this.agents.opportunityResearchAgent.generate(prompt,
-        { structuredOutput: { schema: ResearchOutputSchema, jsonPromptInjection: 'auto' } },
-      ), AGENT_TIMEOUT_MS + 10_000)
-      return extractStructured(result, ResearchOutputSchema).candidates
+      return extractStructured(await timeout(this.agents.opportunityResearchAgent.generate(prompt, {
+        toolChoice: 'none',
+        structuredOutput: { schema: ResearchOutputSchema, jsonPromptInjection: 'auto' },
+      }), DISCOVER_TIMEOUT_MS), ResearchOutputSchema).candidates
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      if (!message.includes('STRUCTURED_OUTPUT_SCHEMA_VALIDATION_FAILED')) throw error
+      if (!shouldFallbackStructuredOutput(message)) throw error
       console.warn('[discover] 结构化输出失败，回退到文本解析:', message)
-      const result = await timeout(this.agents.opportunityResearchAgent.generate(prompt), AGENT_TIMEOUT_MS + 10_000)
+      const result = await timeout(this.agents.opportunityResearchAgent.generate(prompt, { toolChoice: 'none' }), DISCOVER_TIMEOUT_MS)
       const text = (result as { text?: string }).text?.trim() ?? ''
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('模型未返回可解析的 JSON 结果')

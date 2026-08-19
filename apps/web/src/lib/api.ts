@@ -103,7 +103,7 @@ export const api = {
   opportunity: (id: string) => request<Opportunity>(`/opportunities/${encodeURIComponent(id)}`),
   analyze: (input: AnalyzeInput) =>
     request<Opportunity>('/opportunities/analyze', { method: 'POST', body: JSON.stringify(input) }),
-  discover: (input: { industry?: string; region?: string; keywords?: string }) =>
+  discover: (input: { industry?: string; region?: string; keywords?: string; days?: number }) =>
     request<DiscoverResponse>('/opportunities/discover', { method: 'POST', body: JSON.stringify(input) }),
   updateStage: (id: string, stage: OpportunityStage) =>
     request<Opportunity>(`/opportunities/${encodeURIComponent(id)}/stage`, {

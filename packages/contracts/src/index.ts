@@ -191,7 +191,7 @@ export const AnalyzeOpportunityInputSchema = z.object({
 export const DiscoverOpportunityInputSchema = z.object({
   query: z.string().min(2).max(300),
   region: z.string().optional(),
-  days: z.number().int().min(1).max(365).default(90),
+  days: z.number().int().min(1).max(365).default(180),
 })
 
 export const CreateKnowledgeInputSchema = z.object({

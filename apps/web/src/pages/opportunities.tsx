@@ -9,6 +9,13 @@ import { NumberTicker, ProgressArc } from '../components/console'
 
 const stages = Object.entries(stageLabels)
 
+const TIME_RANGE_OPTIONS = [
+  { days: 30, label: '近 30 天' },
+  { days: 90, label: '近 90 天' },
+  { days: 180, label: '近半年' },
+  { days: 365, label: '近一年' },
+] as const
+
 export default function OpportunitiesPage() {
   const [items, setItems] = useState<Opportunity[]>([])
   const [loading, setLoading] = useState(true)
@@ -134,10 +141,12 @@ function DiscoverPanel() {
   const [result, setResult] = useState<DiscoverResponse>()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [days, setDays] = useState(180)
+  const rangeLabel = TIME_RANGE_OPTIONS.find((item) => item.days === days)?.label ?? `近 ${days} 天`
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = new FormData(event.currentTarget)
     setLoading(true); setError(''); setResult(undefined)
-    try { setResult(await api.discover({ industry: String(form.get('industry') ?? ''), region: String(form.get('region') ?? ''), keywords: String(form.get('keywords') ?? '') })) }
+    try { setResult(await api.discover({ industry: String(form.get('industry') ?? ''), region: String(form.get('region') ?? ''), keywords: String(form.get('keywords') ?? ''), days })) }
     catch (err) { setError(err instanceof Error ? err.message : '发现任务失败') }
     finally { setLoading(false) }
   }
@@ -154,6 +163,23 @@ function DiscoverPanel() {
         </select>
       </label>
       <label><span>目标地区</span><input name="region" placeholder="如：长三角 / 京津冀" /></label>
+      <div className="full discover-range">
+        <span>时间范围</span>
+        <div className="segmented-tabs" role="radiogroup" aria-label="时间范围">
+          {TIME_RANGE_OPTIONS.map((option) => (
+            <button
+              key={option.days}
+              type="button"
+              role="radio"
+              aria-checked={days === option.days}
+              className={days === option.days ? 'active' : ''}
+              onClick={() => setDays(option.days)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="full"><span>场景关键词</span><input name="keywords" placeholder="如：绿色船舶、重卡替换、PEM 制氢示范" /></label>
       <button className="button primary full" type="submit" disabled={loading}><Radar size={14} /> {loading ? '正在搜索与研判…' : '开始发现候选信号'}</button>
     </form>
@@ -163,7 +189,7 @@ function DiscoverPanel() {
       <div className="discover-results">
         <div className="discovery-notice">
           <ModeBadge mode={result.mode} />
-          <p>{result.notice}</p>
+          <p>{result.notice} 当前按{rangeLabel}检索。</p>
         </div>
         {result.candidates.length ? result.candidates.map((candidate, index) => {
           const sourceUrl = candidate.sourceUrl ?? candidate.evidence?.[0]?.url
@@ -189,7 +215,7 @@ function DiscoverPanel() {
               </div>
             </article>
           )
-        }) : <EmptyState title="未发现候选信号" description="尝试调整行业、地区或场景关键词。" />}
+        }) : <EmptyState title="未发现候选信号" description="尝试放宽时间范围，或调整行业、地区、场景关键词。" />}
       </div>
     )}
   </div>

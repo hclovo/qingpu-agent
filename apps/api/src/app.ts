@@ -177,7 +177,7 @@ export function createApp(service = new BusinessService()) {
     const input = DiscoverOpportunityInputSchema.parse({
       query: (body.query ?? [body.keywords, body.industry].filter(Boolean).join(' ')) || '氢能产业商机',
       region: body.region || undefined,
-      days: body.days ?? 90,
+      days: body.days ?? 180,
     })
     return c.json(await service.discover(input.query, input.region, input.days))
   })

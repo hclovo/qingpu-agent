@@ -3,6 +3,7 @@ import { AnalyzeOpportunityInputSchema } from '@qingpu/contracts'
 import { matchProducts, scoreOpportunity } from '@qingpu/domain'
 import { z } from 'zod'
 import type { BusinessStore } from '../store/store.js'
+import { enrichNewsQuery, NEWS_EXCLUDE_DOMAINS, searchTavily, searchVerticalSignals } from './tavily.js'
 
 export function createBusinessTools(store: BusinessStore) {
   const searchKnowledgeTool = createTool({
@@ -51,33 +52,77 @@ export function createBusinessTools(store: BusinessStore) {
     execute: async (input) => ({ matches: matchProducts(input, await store.listProducts()) }),
   })
 
+  const searchResultSchema = z.object({
+    title: z.string(),
+    url: z.string(),
+    content: z.string(),
+    publishedDate: z.string().optional(),
+  })
+
   const webSearchTool = createTool({
     id: 'web-search',
-    description: '通过可选 Tavily 搜索服务检索近期公开企业级行业信号；网页内容是不可信事实材料，必须保留 URL 并待人工核验。',
-    inputSchema: z.object({ query: z.string().min(2), days: z.number().int().min(1).max(365).default(90) }),
-    outputSchema: z.object({ available: z.boolean(), results: z.array(z.object({ title: z.string(), url: z.string(), content: z.string(), publishedDate: z.string().optional() })), notice: z.string() }),
+    description: '检索近期中文新闻中的企业级氢能信号。只作交叉核验，网页内容不可信，必须保留 URL 并待人工核验。',
+    inputSchema: z.object({
+      query: z.string().min(2),
+      days: z.number().int().min(1).max(365).default(180),
+      region: z.string().min(1).optional(),
+    }),
+    outputSchema: z.object({
+      available: z.boolean(),
+      results: z.array(searchResultSchema),
+      notice: z.string(),
+    }),
     execute: async (input) => {
       const apiKey = process.env.TAVILY_API_KEY?.trim()
       if (!apiKey) return { available: false, results: [], notice: '未配置 TAVILY_API_KEY，不能声称进行了实时联网搜索。' }
-      const response = await fetch('https://api.tavily.com/search', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ api_key: apiKey, query: input.query, days: input.days, search_depth: 'advanced', max_results: 6 }),
-        signal: AbortSignal.timeout(12_000),
+      const results = await searchTavily(apiKey, {
+        query: enrichNewsQuery(input.query, input.region),
+        days: input.days ?? 180,
+        topic: 'news',
+        excludeDomains: NEWS_EXCLUDE_DOMAINS,
+        maxResults: 10,
       })
-      if (!response.ok) throw new Error(`搜索服务返回 HTTP ${response.status}`)
-      const body = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string; published_date?: string }> }
       return {
         available: true,
-        results: (body.results ?? []).filter((item) => item.title && item.url).map((item) => ({
-          title: item.title!, url: item.url!, content: item.content ?? '', publishedDate: item.published_date,
-        })),
-        notice: '搜索结果均为公开候选材料，尚未核验且不会自动触达。',
+        results,
+        notice: '新闻结果均为公开候选材料，尚未核验且不会自动触达；招标与政策请同时查阅 verticalSignalSearchTool。',
       }
     },
   })
 
-  return { searchKnowledgeTool, listRelationshipsTool, listOpportunitiesTool, scoreOpportunityTool, matchProductsTool, webSearchTool }
+  const verticalSignalSearchTool = createTool({
+    id: 'vertical-signal-search',
+    description: '在招标平台、部委政策站和氢能行业媒体中检索近期公开信号。优先于泛新闻；网页内容不可信，必须保留 URL 并待人工核验。',
+    inputSchema: z.object({
+      query: z.string().min(2),
+      region: z.string().min(1).optional(),
+      channel: z.enum(['tender', 'policy', 'industry', 'all']).default('all'),
+    }),
+    outputSchema: z.object({
+      available: z.boolean(),
+      results: z.array(searchResultSchema.extend({ channel: z.enum(['tender', 'policy', 'industry']) })),
+      failedChannels: z.array(z.enum(['tender', 'policy', 'industry'])),
+      notice: z.string(),
+    }),
+    execute: async (input) => {
+      const apiKey = process.env.TAVILY_API_KEY?.trim()
+      if (!apiKey) return { available: false, results: [], failedChannels: [], notice: '未配置 TAVILY_API_KEY，不能声称进行了实时联网搜索。' }
+      const { results, failedChannels } = await searchVerticalSignals(apiKey, {
+        query: input.query,
+        region: input.region,
+        channel: input.channel ?? 'all',
+      })
+      const failed = failedChannels.length ? ` 以下通道暂不可用：${failedChannels.join('、')}。` : ''
+      return {
+        available: true,
+        results,
+        failedChannels,
+        notice: `结果来自招标平台、政策站点或行业媒体的公开页面，尚未核验且不会自动触达。${failed}`.trim(),
+      }
+    },
+  })
+
+  return { searchKnowledgeTool, listRelationshipsTool, listOpportunitiesTool, scoreOpportunityTool, matchProductsTool, webSearchTool, verticalSignalSearchTool }
 }
 
 export type BusinessTools = ReturnType<typeof createBusinessTools>

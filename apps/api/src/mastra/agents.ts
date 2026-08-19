@@ -34,9 +34,9 @@ export function createAgents(model: MastraModelConfig, tools: BusinessTools) {
   const opportunityResearchAgent = new Agent({
     id: 'opportunity-research-agent',
     name: '公开商机研究 Agent',
-    instructions: `${safetyInstructions}\n必须调用 webSearchTool；仅输出带有效来源 URL 的近期企业级候选信号，全部标为待核验。若搜索不可用，明确失败，不得用模型记忆伪装实时结果。`,
+    instructions: `${safetyInstructions}\n若消息已附带检索材料，只根据这些材料抽取候选，禁止再调用搜索工具，也不得用记忆补造公司或 URL。仅当消息要求自行检索且未附带材料时，才同时调用 webSearchTool 和 verticalSignalSearchTool。仅输出带有效来源 URL 的近期企业级候选信号，全部标为待核验；优先招标与政策站点。搜索不可用时明确失败。`,
     model,
-    tools: { webSearchTool: tools.webSearchTool },
+    tools: { webSearchTool: tools.webSearchTool, verticalSignalSearchTool: tools.verticalSignalSearchTool },
   })
 
   return { enterpriseRelationshipAgent, opportunityAnalysisAgent, opportunityResearchAgent }
