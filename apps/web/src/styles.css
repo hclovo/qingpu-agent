@@ -139,7 +139,7 @@
 * { box-sizing: border-box; }
 html { min-width: 320px; overflow-x: clip; background: var(--surface-sunken); color: var(--ink); }
 body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: clip; background: var(--surface-sunken); }
-#root { width: 100%; max-width: 100%; min-height: 100vh; overflow-x: hidden; }
+#root { width: 100%; max-width: 100%; height: 100vh; overflow: hidden; }
 
 button, input, textarea, select { font: inherit; color: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
@@ -185,9 +185,8 @@ strong, b, time, .rank, td, th, code, kbd, .meter, .tabular { font-variant-numer
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--surface-sunken);
-  /* 顶部极光 */
   position: relative;
   isolation: isolate;
 }
@@ -237,7 +236,7 @@ strong, b, time, .rank, td, th, code, kbd, .meter, .tabular { font-variant-numer
 .status-bar-brand .glyph { color: var(--action); }
 .status-bar-clock { color: var(--action); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
 
-.app-body { display: flex; min-height: 0; flex: 1; }
+.app-body { display: flex; flex: 1; min-height: 0; }
 
 /* 侧栏 */
 .sidebar {
@@ -383,7 +382,7 @@ strong, b, time, .rank, td, th, code, kbd, .meter, .tabular { font-variant-numer
   50% { opacity: 0.4; }
 }
 
-.main-area { flex: 1; min-width: 0; }
+.main-area { flex: 1; min-width: 0; overflow-y: auto; }
 .page-container { width: min(1480px, 100%); margin: 0 auto; padding: var(--space-2xl) var(--space-2xl) 64px; }
 
 .mobile-topbar, .mobile-close, .sidebar-scrim { display: none; }

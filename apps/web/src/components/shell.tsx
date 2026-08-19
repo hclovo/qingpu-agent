@@ -11,7 +11,7 @@ import {
   Radar,
   X,
 } from 'lucide-react'
-import logoUrl from '../../public/logo.svg'
+const logoUrl = '/logo.svg'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { Health } from '../lib/types'
