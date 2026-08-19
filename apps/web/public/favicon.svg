@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <clipPath id="rr">
+      <rect width="64" height="64" rx="14" ry="14"/>
+    </clipPath>
+    <style>
+      .orbit { fill:none; stroke:#7dfbff; stroke-width:1.6; stroke-linecap:round; }
+      .dot   { fill:#7dfbff; }
+    </style>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#082e2e"/>
+  <g clip-path="url(#rr)">
+    <ellipse class="orbit" cx="32" cy="32" rx="9" ry="22" transform="rotate(0 32 32)"/>
+    <ellipse class="orbit" cx="32" cy="32" rx="9" ry="22" transform="rotate(60 32 32)"/>
+    <ellipse class="orbit" cx="32" cy="32" rx="9" ry="22" transform="rotate(120 32 32)"/>
+    <circle class="dot" cx="32" cy="32" r="3.2"/>
+  </g>
+</svg>

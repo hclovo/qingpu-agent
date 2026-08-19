@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-  Atom,
   BookOpenText,
   Bot,
   Boxes,
@@ -12,6 +11,7 @@ import {
   Radar,
   X,
 } from 'lucide-react'
+import logoUrl from '../../public/logo.svg'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { Health } from '../lib/types'
@@ -46,7 +46,9 @@ export default function Shell() {
       <div className="status-bar" role="status" aria-label="system status">
         <div className="status-bar-group">
           <span className="status-bar-brand">
-            <span className="glyph">◆</span>
+            <span className="glyph" aria-hidden="true">
+              <img src={logoUrl} alt="" width="14" height="14" style={{ display: 'block' }} />
+            </span>
             氢擎 · 工作台
           </span>
           <span className="status-bar-divider" />
@@ -66,7 +68,9 @@ export default function Shell() {
       <div className="app-body">
         <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
           <div className="brand">
-            <div className="brand-mark"><Atom size={20} strokeWidth={1.8} /></div>
+            <div className="brand-mark">
+              <img src={logoUrl} alt="氢擎" width="28" height="28" style={{ position: 'relative', zIndex: 1, display: 'block' }} />
+            </div>
             <div>
               <strong>氢擎</strong>
               <span>企业关系与商机 Agent</span>

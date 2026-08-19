@@ -274,7 +274,8 @@ strong, b, time, .rank, td, th, code, kbd, .meter, .tabular { font-variant-numer
   background: conic-gradient(from 0deg, transparent 0%, var(--action-glow-soft) 25%, transparent 50%);
   animation: brand-spin 8s linear infinite;
 }
-.brand-mark > svg { position: relative; z-index: 1; }
+.brand-mark > svg,
+.brand-mark > img { position: relative; z-index: 1; }
 @keyframes brand-spin { to { transform: rotate(360deg); } }
 .brand > div { display: flex; flex-direction: column; }
 .brand strong { color: var(--ink); font-size: var(--text-md); font-weight: 700; letter-spacing: 0.06em; }
