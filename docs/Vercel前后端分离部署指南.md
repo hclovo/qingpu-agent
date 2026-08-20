@@ -218,7 +218,9 @@ curl --silent --show-error https://qingpu-api.vercel.app/api/health
 | Build Command | `pnpm build` |
 | Output Directory | `dist`，通常由 Vite 自动识别 |
 
-仓库中的 `apps/web/vercel.json` 已配置 SPA 路由回退。直接刷新 `/dashboard`、`/opportunities/:id` 等前端路由时，会返回 `index.html`，而不是 Vercel 404。
+仓库中的 `apps/web/vercel.json` 已锁定 `framework: vite`，并配置 SPA 路由回退。直接刷新 `/dashboard`、`/opportunities/:id` 等前端路由时，会返回 `index.html`，而不是 Vercel 404。
+
+控制台 **Framework Preset 必须是 `Vite`，不能是 `Hono`**。如果构建日志在 `vite build` 成功后出现 `No entrypoint found. Searched for: app.ts / index.ts / server.ts`，说明这个项目被当成了 Hono 后端。到 Settings → General 把 Framework 改成 Vite，并确认 Root Directory 是 `apps/web`，然后 Redeploy。
 
 ### 6.2 Web 环境变量
 
@@ -357,15 +359,28 @@ pnpm --filter @qingpu/api db:migrate
 
 确认迁移使用的 `DATABASE_URL` 与 Vercel API 项目中的生产连接串一致。
 
-### 10.6 前端子页面刷新为 404
+### 10.6 Vite 构建成功后报 `No entrypoint found`
+
+这是 Web 项目被识别成 Hono。Hono 会在静态构建之后继续找 `app.ts` / `server.ts`，而 `apps/web` 里没有这些文件。
+
+处理：
+
+1. 该项目 Framework Preset 改为 `Vite`。
+2. Root Directory 确认为 `apps/web`。
+3. 不要用同一个 Vercel 项目同时当 Web 和 API。
+4. 提交包含 `"framework": "vite"` 的 `apps/web/vercel.json` 后重新部署。
+
+API 项目应另建，Root Directory 为 `apps/api`，Framework 才是 `Hono`。
+
+### 10.7 前端子页面刷新为 404
 
 确认 Web 项目 Root Directory 是 `apps/web`，并且部署中包含 `apps/web/vercel.json`。重新部署 Web。
 
-### 10.7 Agent 一直是规则模式
+### 10.8 Agent 一直是规则模式
 
 这通常表示没有配置与 `MASTRA_MODEL` 提供方匹配的密钥。检查 API 项目环境变量；这不影响基础 API 和规则引擎运行。
 
-### 10.8 数据库连接数过多
+### 10.9 数据库连接数过多
 
 使用数据库服务商的 pooled connection URL，并把 `DATABASE_POOL_SIZE` 调低到 `1` 或 `2`。同时查看数据库侧最大连接数和 Vercel Function 并发量。
 
