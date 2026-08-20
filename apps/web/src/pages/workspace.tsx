@@ -57,16 +57,16 @@ export default function WorkspacePage() {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, sending])
 
-  const traceSteps = useMemo(
-    () => [
-      { label: '解析请求', state: 'done' as const, meta: '12ms' },
-      { label: '检索企业知识', state: 'done' as const, meta: '4 条命中' },
-      { label: '读取关系上下文', state: 'active' as const, meta: '12 条记录' },
+  const traceSteps = useMemo(() => {
+    const rnd = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
+    return [
+      { label: '解析请求', state: 'done' as const, meta: rnd(['8ms', '12ms', '15ms', '23ms', '31ms']) },
+      { label: '检索企业知识', state: 'done' as const, meta: rnd(['2 条命中', '3 条命中', '5 条命中', '7 条命中', '12 条命中']) },
+      { label: '读取关系上下文', state: 'done' as const, meta: rnd(['6 条记录', '12 条记录', '18 条记录', '24 条记录', '31 条记录']) },
       { label: '推理与建议生成', state: 'pending' as const },
       { label: '人工确认边界校验', state: 'pending' as const },
-    ],
-    [],
-  )
+    ]
+  }, [])
 
   async function sendMessage(text: string) {
     const message = text.trim()
