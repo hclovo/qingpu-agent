@@ -192,3 +192,4 @@ export function createApp(service = new BusinessService()) {
 }
 
 export const app = createApp()
+export default app

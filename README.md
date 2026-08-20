@@ -60,6 +60,17 @@ pnpm --filter @qingpu/api db:migrate  # 应用 PostgreSQL 迁移
 pnpm --filter @qingpu/api db:seed     # 幂等写入演示种子
 ```
 
+## Vercel 部署
+
+API 是一个依赖仓库内共享包的 Hono workspace。创建 API 项目时请使用以下设置：
+
+- **Root Directory**：`apps/api`
+- **Framework Preset**：`Hono`（通常会自动识别）
+- **Build Command**：`pnpm build`
+- 在 Root Directory 设置中开启 **Include source files outside of the Root Directory in the Build Step**
+
+最后一项必须保持开启，否则 Vercel Function 不会包含 `packages/contracts` 和 `packages/domain`，运行时会出现 `ERR_MODULE_NOT_FOUND: Cannot find package '@qingpu/contracts'`。修改设置后，请在不复用 Build Cache 的情况下重新部署。
+
 ## 仓库结构
 
 ```text
