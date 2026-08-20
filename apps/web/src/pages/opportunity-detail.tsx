@@ -2,12 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, ArrowLeft, Bot, Building2, CalendarDays, CheckCircle2, ExternalLink, FileSearch, Lightbulb, MapPin, PackageCheck, Save, ShieldAlert, Target } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { displaySource, formatDate, stageLabels } from '../lib/format'
 import type { Opportunity, OpportunityStage } from '../lib/types'
 import { EmptyState, ErrorState, LoadingState, ModeBadge, StatusBadge } from '../components/ui'
 import { NumberTicker, ProgressArc, RadarChart } from '../components/console'
 
 export default function OpportunityDetailPage() {
+  const { has } = useAuth()
+  const canStage = has('opportunities.stage')
   const { id = '' } = useParams()
   const [item, setItem] = useState<Opportunity>()
   const [loading, setLoading] = useState(true)
@@ -181,13 +184,19 @@ export default function OpportunityDetailPage() {
         <section className="card stage-card">
           <span className="section-kicker">阶段管理</span>
           <h2>更新商机阶段</h2>
-          <select value={stage} onChange={(event) => setStage(event.target.value as OpportunityStage)}>
-            {Object.entries(stageLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-          </select>
-          <button className="button primary full" type="button" disabled={saving || stage === item.stage} onClick={() => void saveStage()}>
-            <Save size={15} /> {saving ? '保存中…' : '保存阶段'}
-          </button>
-          {stageError && <div className="inline-error">{stageError}</div>}
+          {canStage ? (
+            <>
+              <select value={stage} onChange={(event) => setStage(event.target.value as OpportunityStage)}>
+                {Object.entries(stageLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+              </select>
+              <button className="button primary full" type="button" disabled={saving || stage === item.stage} onClick={() => void saveStage()}>
+                <Save size={15} /> {saving ? '保存中…' : '保存阶段'}
+              </button>
+              {stageError && <div className="inline-error">{stageError}</div>}
+            </>
+          ) : (
+            <p>当前阶段：{stageLabels[item.stage] ?? item.stage}</p>
+          )}
           <small>阶段变更只更新内部跟进状态，不会触达外部对象。</small>
         </section>
 

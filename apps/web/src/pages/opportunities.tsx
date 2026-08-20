@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { ArrowRight, Building2, ExternalLink, Radar, Search, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { formatDate, stageLabels } from '../lib/format'
 import type { DiscoverResponse, Opportunity } from '../lib/types'
 import { Drawer, EmptyState, ErrorState, LoadingState, ModeBadge, PageHeader, StatusBadge } from '../components/ui'
@@ -17,6 +18,9 @@ const TIME_RANGE_OPTIONS = [
 ] as const
 
 export default function OpportunitiesPage() {
+  const { has } = useAuth()
+  const canDiscover = has('opportunities.discover')
+  const canAnalyze = has('opportunities.analyze')
   const [items, setItems] = useState<Opportunity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -39,10 +43,12 @@ export default function OpportunitiesPage() {
         description="发现、筛选并核验氢能产业信号，把注意力集中在最值得跟进的机会。"
         actions={
           <>
-            <button className="button secondary" type="button" onClick={() => setDiscoverOpen(true)}>
-              <Sparkles size={15} /> Agent 自动发现
-            </button>
-            <Link className="button primary" to="/analyze">研判新信号 <ArrowRight size={15} /></Link>
+            {canDiscover && (
+              <button className="button secondary" type="button" onClick={() => setDiscoverOpen(true)}>
+                <Sparkles size={15} /> Agent 自动发现
+              </button>
+            )}
+            {canAnalyze && <Link className="button primary" to="/analyze">研判新信号 <ArrowRight size={15} /></Link>}
           </>
         }
       />
@@ -130,14 +136,14 @@ export default function OpportunitiesPage() {
               </tbody>
             </table>
           </div>
-        ) : <EmptyState title="没有匹配的商机" description="调整筛选条件，或让 Agent 发现新的候选信号。" action={<button className="button secondary small" type="button" onClick={() => setDiscoverOpen(true)}><Radar size={14} /> 自动发现</button>} />}
+        ) : <EmptyState title="没有匹配的商机" description="调整筛选条件，或让 Agent 发现新的候选信号。" action={canDiscover ? <button className="button secondary small" type="button" onClick={() => setDiscoverOpen(true)}><Radar size={14} /> 自动发现</button> : undefined} />}
       </section>
-      {discoverOpen && <Drawer title="Agent 自动发现" subtitle="公开候选信息一律标记为待核验，不会自动对外联系" onClose={() => setDiscoverOpen(false)}><DiscoverPanel /></Drawer>}
+      {canDiscover && discoverOpen && <Drawer title="Agent 自动发现" subtitle="公开候选信息一律标记为待核验，不会自动对外联系" onClose={() => setDiscoverOpen(false)}><DiscoverPanel canAnalyze={canAnalyze} /></Drawer>}
     </>
   )
 }
 
-function DiscoverPanel() {
+function DiscoverPanel({ canAnalyze }: { canAnalyze: boolean }) {
   const [result, setResult] = useState<DiscoverResponse>()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -211,7 +217,7 @@ function DiscoverPanel() {
               </div>
               <div className="candidate-actions">
                 {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer" className="text-link">查看来源 <ExternalLink size={12} /></a>}
-                <Link className="button secondary small" to="/analyze" state={{ candidate: { ...candidate, sourceUrl, occurredAt } }}>进入研判 <ArrowRight size={13} /></Link>
+                {canAnalyze && <Link className="button secondary small" to="/analyze" state={{ candidate: { ...candidate, sourceUrl, occurredAt } }}>进入研判 <ArrowRight size={13} /></Link>}
               </div>
             </article>
           )

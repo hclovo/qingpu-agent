@@ -2,22 +2,33 @@ import { randomUUID } from 'node:crypto'
 import {
   AgentChatInputSchema,
   AnalyzeOpportunityInputSchema,
+  ChangePasswordInputSchema,
+  CreateRoleInputSchema,
   CreateKnowledgeInputSchema,
   CreateTouchpointInputSchema,
+  CreateUserInputSchema,
   DiscoverOpportunityInputSchema,
   KnowledgeStatusSchema,
+  LoginInputSchema,
   OpportunityGradeSchema,
   OpportunityStageSchema,
   RelationshipRoleSchema,
+  PERMISSION_CATALOG,
+  UpdateRoleInputSchema,
+  UpdateUserInputSchema,
   type Opportunity,
 } from '@qingpu/contracts'
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
+import { deleteCookie, setCookie } from 'hono/cookie'
 import { ZodError } from 'zod'
+import { attachActor, requirePermission, type AuthVariables } from './auth/middleware.js'
+import { SESSION_COOKIE, sessionTtlMs } from './auth/enabled.js'
+import { AuthConflictError, AuthNotFoundError, ForbiddenError, RateLimitedError, UnauthenticatedError } from './auth/errors.js'
+import { persistableActorId } from './auth/session.js'
+import { AuthService } from './auth/service.js'
 import { BusinessService } from './services/business-service.js'
 import { DuplicateOpportunityError } from './store/store.js'
-
-type Variables = { requestId: string }
 
 function webOrigins() {
   const configured = [process.env.WEB_ORIGIN, process.env.WEB_ORIGINS]
@@ -40,7 +51,6 @@ function webOrigins() {
     return url.origin
   }))]
 }
-
 class RequestBodyError extends Error {
   readonly code = 'VALIDATION_ERROR'
 }
@@ -87,8 +97,27 @@ function normalizeContactability(value: unknown) {
   return value || 'unknown'
 }
 
+function clientIp(request: Request) {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || undefined
+}
+
+function writeSessionCookie(c: Context, token: string) {
+  setCookie(c, SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'Lax',
+    path: '/',
+    maxAge: Math.floor(sessionTtlMs() / 1000),
+    secure: process.env.NODE_ENV === 'production',
+  })
+}
+
+function clearSessionCookie(c: Context) {
+  deleteCookie(c, SESSION_COOKIE, { path: '/' })
+}
+
 export function createApp(service = new BusinessService()) {
-  const app = new Hono<{ Variables: Variables }>()
+  const auth = new AuthService(service.store)
+  const app = new Hono<{ Variables: AuthVariables }>()
   const allowedOrigins = webOrigins()
 
   app.use('*', async (c, next) => {
@@ -99,11 +128,13 @@ export function createApp(service = new BusinessService()) {
   })
   app.use('/api/*', cors({
     origin: allowedOrigins,
-    allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'X-Request-Id'],
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'X-Request-Id', 'Authorization'],
     exposeHeaders: ['X-Request-Id'],
     maxAge: 86_400,
   }))
+  app.use('/api/*', attachActor(auth))
 
   app.onError((error, c) => {
     const requestId = c.get('requestId') || randomUUID()
@@ -113,8 +144,11 @@ export function createApp(service = new BusinessService()) {
     if (error instanceof RequestBodyError) {
       return c.json(errorBody(requestId, error.code, error.message), 400)
     }
-    if (error instanceof DuplicateOpportunityError) {
+    if (error instanceof DuplicateOpportunityError || error instanceof AuthConflictError) {
       return c.json(errorBody(requestId, error.code, error.message), 409)
+    }
+    if (error instanceof UnauthenticatedError || error instanceof ForbiddenError || error instanceof RateLimitedError || error instanceof AuthNotFoundError) {
+      return c.json(errorBody(requestId, error.code, error.message), error.status)
     }
     return c.json(errorBody(requestId, 'INTERNAL_ERROR', '服务暂时不可用，请稍后重试'), 500)
   })
@@ -122,37 +156,92 @@ export function createApp(service = new BusinessService()) {
   app.notFound((c) => c.json(errorBody(c.get('requestId') || randomUUID(), 'NOT_FOUND', '请求的资源不存在'), 404))
 
   app.get('/api/health', (c) => c.json({ ...service.health(), requestId: c.get('requestId') }))
-  app.get('/api/dashboard', async (c) => {
+
+  app.post('/api/auth/login', async (c) => {
+    const input = LoginInputSchema.parse(await jsonBody(c.req.raw))
+    const { user, token } = await auth.login(input, {
+      ip: clientIp(c.req.raw),
+      userAgent: c.req.header('user-agent') ?? undefined,
+      requestId: c.get('requestId'),
+    })
+    writeSessionCookie(c, token)
+    return c.json({ user })
+  })
+  app.post('/api/auth/logout', async (c) => {
+    await auth.logout(c.get('sessionId'), persistableActorId(c.get('actor')?.id), c.get('requestId'))
+    clearSessionCookie(c)
+    return c.json({ ok: true })
+  })
+  app.get('/api/me', requirePermission('session.self'), (c) => c.json({ user: c.get('actor') }))
+  app.post('/api/me/password', requirePermission('session.self'), async (c) => {
+    const actor = c.get('actor')
+    if (!actor || actor.role === 'anonymous') throw new UnauthenticatedError()
+    const input = ChangePasswordInputSchema.parse(await jsonBody(c.req.raw))
+    return c.json({ user: await auth.changePassword(actor.id, input, c.get('requestId')) })
+  })
+
+  app.get('/api/permissions', requirePermission('roles.read'), (c) => c.json(PERMISSION_CATALOG))
+  app.get('/api/roles', async (c) => {
+    const actor = c.get('actor')
+    if (!actor) throw new UnauthenticatedError()
+    if (!actor.permissions.includes('roles.read') && !actor.permissions.includes('users.read')) throw new ForbiddenError()
+    return c.json(await auth.listRoles())
+  })
+  app.get('/api/roles/:id', requirePermission('roles.read'), async (c) => c.json(await auth.getRole(c.req.param('id'))))
+  app.post('/api/roles', requirePermission('roles.manage'), async (c) => {
+    const input = CreateRoleInputSchema.parse(await jsonBody(c.req.raw))
+    return c.json(await auth.createRole(input, persistableActorId(c.get('actor')?.id), c.get('requestId')), 201)
+  })
+  app.patch('/api/roles/:id', requirePermission('roles.manage'), async (c) => {
+    const input = UpdateRoleInputSchema.parse(await jsonBody(c.req.raw))
+    return c.json(await auth.updateRole(c.req.param('id'), input, persistableActorId(c.get('actor')?.id), c.get('requestId')))
+  })
+  app.delete('/api/roles/:id', requirePermission('roles.manage'), async (c) => {
+    await auth.deleteRole(c.req.param('id'), persistableActorId(c.get('actor')?.id), c.get('requestId'))
+    return c.json({ ok: true })
+  })
+
+  app.get('/api/users', requirePermission('users.read'), async (c) => c.json(await auth.listUsers()))
+  app.post('/api/users', requirePermission('users.manage'), async (c) => {
+    const input = CreateUserInputSchema.parse(await jsonBody(c.req.raw))
+    return c.json(await auth.createUser(input, persistableActorId(c.get('actor')?.id), c.get('requestId')), 201)
+  })
+  app.patch('/api/users/:id', requirePermission('users.manage'), async (c) => {
+    const input = UpdateUserInputSchema.parse(await jsonBody(c.req.raw))
+    return c.json(await auth.updateUser(c.req.param('id'), input, persistableActorId(c.get('actor')?.id), c.get('requestId')))
+  })
+
+  app.get('/api/dashboard', requirePermission('dashboard.read'), async (c) => {
     const data = await service.dashboard()
     return c.json({ ...data, topOpportunities: data.topOpportunities.map(presentOpportunity) })
   })
 
-  app.post('/api/agent/chat', async (c) => {
+  app.post('/api/agent/chat', requirePermission('agent.chat'), async (c) => {
     const input = AgentChatInputSchema.parse(await jsonBody(c.req.raw))
     return c.json(await service.chat(input))
   })
-  app.get('/api/agent/briefing', async (c) => c.json(await service.briefing()))
+  app.get('/api/agent/briefing', requirePermission('agent.briefing'), async (c) => c.json(await service.briefing()))
 
-  app.get('/api/relationships', async (c) => {
+  app.get('/api/relationships', requirePermission('relationships.read'), async (c) => {
     const role = c.req.query('role') ? RelationshipRoleSchema.parse(c.req.query('role')) : undefined
     return c.json(await service.store.listRelationships(role))
   })
-  app.get('/api/relationships/:id', async (c) => {
+  app.get('/api/relationships/:id', requirePermission('relationships.read'), async (c) => {
     const item = await service.store.getRelationship(c.req.param('id'))
     return item ? c.json(item) : c.json(errorBody(c.get('requestId'), 'NOT_FOUND', '关系对象不存在'), 404)
   })
-  app.post('/api/relationships/:id/touchpoints', async (c) => {
+  app.post('/api/relationships/:id/touchpoints', requirePermission('relationships.touch'), async (c) => {
     const body = await jsonBody(c.req.raw)
     const input = CreateTouchpointInputSchema.parse({ ...body, outcome: String(body.outcome ?? '').trim() || '待复盘' })
-    const item = await service.addTouchpoint(c.req.param('id'), input)
+    const item = await service.addTouchpoint(c.req.param('id'), input, persistableActorId(c.get('actor')?.id))
     return item ? c.json(item, 201) : c.json(errorBody(c.get('requestId'), 'NOT_FOUND', '关系对象不存在'), 404)
   })
 
-  app.get('/api/knowledge', async (c) => {
+  app.get('/api/knowledge', requirePermission('knowledge.read'), async (c) => {
     const status = c.req.query('status') ? KnowledgeStatusSchema.parse(c.req.query('status')) : undefined
     return c.json(await service.store.listKnowledge(c.req.query('q'), status))
   })
-  app.post('/api/knowledge', async (c) => {
+  app.post('/api/knowledge', requirePermission('knowledge.write'), async (c) => {
     const body = await jsonBody(c.req.raw)
     const type = String(body.type ?? 'text')
     const input = CreateKnowledgeInputSchema.parse({
@@ -167,21 +256,21 @@ export function createApp(service = new BusinessService()) {
     })
     if (input.type === 'url' && !input.sourceUrl) throw new RequestBodyError('URL 知识必须提供有效的 sourceUrl')
     if (input.type === 'file' && !input.sourcePath) throw new RequestBodyError('文件知识必须提供 sourcePath 或文件名')
-    return c.json(await service.createKnowledge(input), 201)
+    return c.json(await service.createKnowledge(input, persistableActorId(c.get('actor')?.id)), 201)
   })
 
-  app.get('/api/products', async (c) => c.json(await service.store.listProducts()))
-  app.get('/api/opportunities', async (c) => c.json((await service.listOpportunities({
+  app.get('/api/products', requirePermission('products.read'), async (c) => c.json(await service.store.listProducts()))
+  app.get('/api/opportunities', requirePermission('opportunities.read'), async (c) => c.json((await service.listOpportunities({
     q: c.req.query('q'),
     industry: c.req.query('industry'),
     grade: c.req.query('grade') ? OpportunityGradeSchema.parse(c.req.query('grade')) : undefined,
     stage: c.req.query('stage') ? OpportunityStageSchema.parse(c.req.query('stage')) : undefined,
   })).map(presentOpportunity)))
-  app.get('/api/opportunities/:id', async (c) => {
+  app.get('/api/opportunities/:id', requirePermission('opportunities.read'), async (c) => {
     const item = await service.store.getOpportunity(c.req.param('id'))
     return item ? c.json(presentOpportunity(item)) : c.json(errorBody(c.get('requestId'), 'NOT_FOUND', '商机不存在'), 404)
   })
-  app.post('/api/opportunities/analyze', async (c) => {
+  app.post('/api/opportunities/analyze', requirePermission('opportunities.analyze'), async (c) => {
     const body = await jsonBody(c.req.raw)
     const normalized = {
       ...body,
@@ -195,21 +284,21 @@ export function createApp(service = new BusinessService()) {
     if (await service.store.hasOpportunityFingerprint(input.companyName, input.title)) {
       return c.json(errorBody(c.get('requestId'), 'DUPLICATE_OPPORTUNITY', '同一企业的同名商机已存在'), 409)
     }
-    return c.json(presentOpportunity(await service.analyze(input)), 201)
+    return c.json(presentOpportunity(await service.analyze(input, persistableActorId(c.get('actor')?.id))), 201)
   })
-  app.post('/api/opportunities/discover', async (c) => {
+  app.post('/api/opportunities/discover', requirePermission('opportunities.discover'), async (c) => {
     const body = await jsonBody(c.req.raw)
     const input = DiscoverOpportunityInputSchema.parse({
       query: (body.query ?? [body.keywords, body.industry].filter(Boolean).join(' ')) || '氢能产业商机',
       region: body.region || undefined,
       days: body.days ?? 180,
     })
-    return c.json(await service.discover(input.query, input.region, input.days))
+    return c.json(await service.discover(input.query, input.region, input.days, persistableActorId(c.get('actor')?.id)))
   })
-  app.patch('/api/opportunities/:id/stage', async (c) => {
+  app.patch('/api/opportunities/:id/stage', requirePermission('opportunities.stage'), async (c) => {
     const body = await jsonBody(c.req.raw)
     const stage = OpportunityStageSchema.parse(body.stage)
-    const item = await service.store.updateOpportunityStage(c.req.param('id'), stage)
+    const item = await service.updateOpportunityStage(c.req.param('id'), stage, persistableActorId(c.get('actor')?.id))
     return item ? c.json(item) : c.json(errorBody(c.get('requestId'), 'NOT_FOUND', '商机不存在'), 404)
   })
 

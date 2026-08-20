@@ -3,6 +3,7 @@ import { boolean, check, index, integer, jsonb, numeric, pgTable, primaryKey, sm
 import { agentModeEnum, contactabilityEnum, maturityEnum, opportunityGradeEnum, opportunityStageEnum, scoreDimensionKeyEnum, signalTypeEnum, sourceKindEnum } from './enums.js'
 import { products } from './products.js'
 import { relationships } from './relationships.js'
+import { users } from './users.js'
 
 export const opportunities = pgTable('opportunities', {
   id: text('id').primaryKey(),
@@ -22,6 +23,8 @@ export const opportunities = pgTable('opportunities', {
   scoreVersion: text('score_version').notNull(),
   sourceKind: sourceKindEnum('source_kind').notNull(),
   isDemo: boolean('is_demo').generatedAlwaysAs(sql`source_kind = 'demo-simulated'`).notNull(),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

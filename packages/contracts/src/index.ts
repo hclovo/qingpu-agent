@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+export * from './auth.js'
+
 export const AgentModeSchema = z.enum(['intelligent', 'rules', 'demo'])
 export const OpportunityGradeSchema = z.enum(['A', 'B', 'C', 'D'])
 export const OpportunityStageSchema = z.enum([
@@ -119,6 +121,8 @@ export const OpportunitySchema = z.object({
   insight: AgentInsightSchema,
   tags: z.array(z.string()),
   isDemo: z.boolean(),
+  createdBy: z.string().optional(),
+  updatedBy: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -132,6 +136,7 @@ export const TouchpointSchema = z.object({
   nextAction: z.string().optional(),
   nextActionAt: z.string().optional(),
   createdAt: z.string(),
+  createdBy: z.string().optional(),
 })
 
 export const RelationshipSchema = z.object({
@@ -166,6 +171,7 @@ export const KnowledgeItemSchema = z.object({
   status: KnowledgeStatusSchema,
   sourceKind: SourceKindSchema,
   isDemo: z.boolean(),
+  createdBy: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })

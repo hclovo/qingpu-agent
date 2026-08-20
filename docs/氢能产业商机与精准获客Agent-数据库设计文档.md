@@ -56,7 +56,7 @@ API 已支持 `PostgresStore` 持久化，也保留 `MemoryStore` + `apps/api/sr
 | --- | --- |
 | Dashboard / Briefing | 聚合查询即可，避免缓存失效 |
 | Agent 对话消息 | 需求明确为当前会话；后续再加 `agent_conversations` |
-| 用户 / RBAC | MVP 无认证 |
+| 用户 / RBAC | V1 固定角色已落地；自定义角色与矩阵见 RBAC 设计文档 |
 | 向量切片 | 知识检索仍用关键词；RAG 作为二期 |
 
 ## 3. 技术选型
@@ -280,7 +280,7 @@ SELECT * FROM opportunities WHERE relationship_id = $1 ORDER BY score DESC;
 
 写入事务：插入互动 → 更新父关系的 `last_contact_at` / `next_action` / `next_action_at` / `health` / `health_score` / `updated_at`。失败则整笔回滚。
 
-MVP 不记录操作人；预留二期 `created_by`。
+MVP 不记录操作人；认证开启后写入 `created_by`，见用户与权限设计文档。
 
 ### 7.5 `knowledge_items`（知识条目）
 

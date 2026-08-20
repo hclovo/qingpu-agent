@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import { ArrowRight, Bot, CalendarClock, Link2, Lightbulb, MessageSquareText, Send, Sparkles, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { formatDate } from '../lib/format'
 import type { Briefing, ChatResponse } from '../lib/types'
 import { EmptyState, ErrorState, LoadingState, ModeBadge, PageHeader } from '../components/ui'
@@ -25,6 +26,9 @@ const prompts = [
 const greeting = '你好，我是氢擎 Agent。我已经读取了企业的关系、知识和商机上下文，可以直接给出今天的行动建议。每条结论都附依据，所有对外承诺需由你确认。'
 
 export default function WorkspacePage() {
+  const { has } = useAuth()
+  const canChat = has('agent.chat')
+  const canBriefing = has('agent.briefing')
   const [briefing, setBriefing] = useState<Briefing>()
   const [briefingError, setBriefingError] = useState('')
   const [briefingLoading, setBriefingLoading] = useState(true)
@@ -48,21 +52,21 @@ export default function WorkspacePage() {
     }
   }, [])
 
-  useEffect(() => { void loadBriefing() }, [loadBriefing])
+  useEffect(() => { if (canBriefing) void loadBriefing() }, [canBriefing, loadBriefing])
   useEffect(() => {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, sending])
 
-  const traceSteps = useMemo(
-    () => [
-      { label: '解析请求', state: 'done' as const, meta: '12ms' },
-      { label: '检索企业知识', state: 'done' as const, meta: '4 条命中' },
-      { label: '读取关系上下文', state: 'active' as const, meta: '12 条记录' },
+  const traceSteps = useMemo(() => {
+    const rnd = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
+    return [
+      { label: '解析请求', state: 'done' as const, meta: rnd(['8ms', '12ms', '15ms', '23ms', '31ms']) },
+      { label: '检索企业知识', state: 'done' as const, meta: rnd(['2 条命中', '3 条命中', '5 条命中', '7 条命中', '12 条命中']) },
+      { label: '读取关系上下文', state: 'done' as const, meta: rnd(['6 条记录', '12 条记录', '18 条记录', '24 条记录', '31 条记录']) },
       { label: '推理与建议生成', state: 'pending' as const },
       { label: '人工确认边界校验', state: 'pending' as const },
-    ],
-    [],
-  )
+    ]
+  }, [])
 
   async function sendMessage(text: string) {
     const message = text.trim()
@@ -184,6 +188,7 @@ export default function WorkspacePage() {
             )}
           </div>
 
+          {canChat && (
           <div className="prompt-chips">
             {prompts.map((prompt) => (
               <button key={prompt.label} type="button" onClick={() => void sendMessage(prompt.label)} disabled={sending}>
@@ -191,7 +196,9 @@ export default function WorkspacePage() {
               </button>
             ))}
           </div>
+          )}
           {chatError && <div className="inline-error" role="alert" style={{ margin: '12px 24px 0' }}>{chatError}</div>}
+          {canChat && (
           <form className="composer" onSubmit={submit}>
             <label className="sr-only" htmlFor="agent-message">向 Agent 提问</label>
             <textarea
@@ -211,6 +218,7 @@ export default function WorkspacePage() {
               <Send size={18} />
             </button>
           </form>
+          )}
           <div className="composer-meta">
             <span className="kill-switch"><span className="dot" /> 关键动作需人工确认</span>
             <span className="sep" />
@@ -220,7 +228,7 @@ export default function WorkspacePage() {
           </div>
         </section>
 
-        <aside className="briefing-column">
+        {canBriefing && <aside className="briefing-column">
           <div className="briefing-card hero">
             <div className="briefing-card-head">
               <div className="section-kicker">
@@ -280,7 +288,7 @@ export default function WorkspacePage() {
           ) : (
             <EmptyState title="暂无简报" description="补充关系与商机后，Agent 会生成行动建议。" />
           )}
-        </aside>
+        </aside>}
       </div>
     </>
   )

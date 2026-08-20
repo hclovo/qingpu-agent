@@ -9,6 +9,8 @@ import type {
 } from '@qingpu/contracts'
 import { createRulesInsight, matchProducts, scoreOpportunity } from '@qingpu/domain'
 import { MastraRuntime, type ResearchCandidate } from '../mastra/index.js'
+import { isAuthEnabled } from '../auth/enabled.js'
+import { persistableActorId } from '../auth/session.js'
 import { createStore } from '../store/create-store.js'
 import type { BusinessStore, OpportunityFilters } from '../store/store.js'
 
@@ -31,6 +33,7 @@ export class BusinessService {
       agentMode: this.runtime.intelligent ? 'intelligent' : 'rules',
       model: this.runtime.intelligent ? this.runtime.model : undefined,
       storage: this.store.kind,
+      authRequired: isAuthEnabled(),
       now: today(),
     }
   }
@@ -242,7 +245,7 @@ export class BusinessService {
     return this.store.listOpportunities(filters)
   }
 
-  async analyze(input: AnalyzeOpportunityInput): Promise<Opportunity> {
+  async analyze(input: AnalyzeOpportunityInput, actorUserId?: string): Promise<Opportunity> {
     const score = scoreOpportunity(input)
     const products = matchProducts(input, await this.store.listProducts())
     let insight = createRulesInsight(input, score, products)
@@ -286,16 +289,19 @@ export class BusinessService {
       insight,
       tags: [input.industry, input.signalType, score.grade === 'A' ? '高潜' : '待培育'],
       isDemo: input.sourceKind === 'demo-simulated',
+      createdBy: persistableActorId(actorUserId),
+      updatedBy: persistableActorId(actorUserId),
       createdAt: timestamp,
       updatedAt: timestamp,
     }
     return this.store.createOpportunity(opportunity)
   }
 
-  async discover(query: string, region: string | undefined, days: number) {
+  async discover(query: string, region: string | undefined, days: number, actorUserId?: string) {
     if (this.runtime.intelligent) {
       try {
         const rows = await this.runtime.discover(query, region, days)
+        await this.safeActivity(actorUserId, 'opportunities.discover')
         return { mode: 'intelligent', notice: '联网候选均为待核验材料，不会自动触达或写入跟进阶段。', candidates: rows.map((item) => this.scoreResearchCandidate(item)) }
       } catch (error) {
         console.error('[discover] 实时搜索失败:', error)
@@ -343,11 +349,26 @@ export class BusinessService {
     }
   }
 
-  createKnowledge(input: CreateKnowledgeInput) {
-    return this.store.createKnowledge(input)
+  createKnowledge(input: CreateKnowledgeInput, actorUserId?: string) {
+    return this.store.createKnowledge(input, persistableActorId(actorUserId))
   }
 
-  addTouchpoint(id: string, input: CreateTouchpointInput) {
-    return this.store.addTouchpoint(id, input)
+  addTouchpoint(id: string, input: CreateTouchpointInput, actorUserId?: string) {
+    return this.store.addTouchpoint(id, input, persistableActorId(actorUserId))
+  }
+
+  updateOpportunityStage(id: string, stage: Opportunity['stage'], actorUserId?: string) {
+    return this.store.updateOpportunityStage(id, stage, persistableActorId(actorUserId)).then(async (item) => {
+      if (item) await this.safeActivity(actorUserId, 'opportunities.stage', 'opportunity', id)
+      return item
+    })
+  }
+
+  private async safeActivity(actorUserId: string | undefined, action: string, targetType?: string, targetId?: string) {
+    try {
+      await this.store.recordActivity({ actorUserId: persistableActorId(actorUserId), action, targetType, targetId })
+    } catch {
+      // 活动日志失败不影响主路径
+    }
   }
 }

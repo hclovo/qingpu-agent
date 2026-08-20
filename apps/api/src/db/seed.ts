@@ -1,6 +1,8 @@
 import { count, eq } from 'drizzle-orm'
 import '../env.js'
 import { createSeedData } from '../data/seed.js'
+import { createSeedRoles, createSeedUserRoles } from '../data/seed-roles.js'
+import { createSeedUsers } from '../data/seed-users.js'
 import { createDatabaseConnection } from './client.js'
 import {
   agentInsights,
@@ -14,8 +16,12 @@ import {
   products,
   relationships,
   relationshipTags,
+  rolePermissions,
+  roles,
   sourceEvidences,
   touchpoints,
+  userRoles,
+  users,
 } from './schema/index.js'
 
 const databaseUrl = process.env.DATABASE_URL?.trim()
@@ -26,6 +32,39 @@ const seed = createSeedData()
 
 try {
   await db.transaction(async (tx) => {
+    const seedRoles = createSeedRoles()
+    await tx.insert(roles).values(seedRoles.map((item) => ({
+      id: item.id,
+      code: item.code,
+      name: item.name,
+      description: item.description,
+      isSystem: item.isSystem,
+      sortOrder: item.sortOrder,
+      createdAt: new Date(item.createdAt),
+      updatedAt: new Date(item.updatedAt),
+    }))).onConflictDoNothing()
+    const rolePermissionRows = seedRoles.flatMap((item) => item.permissions.map((permission) => ({ roleId: item.id, permission })))
+    if (rolePermissionRows.length) await tx.insert(rolePermissions).values(rolePermissionRows).onConflictDoNothing()
+
+    await tx.insert(users).values(createSeedUsers().map((item) => ({
+      id: item.id,
+      email: item.email,
+      displayName: item.displayName,
+      status: item.status,
+      passwordHash: item.passwordHash,
+      mustChangePassword: item.mustChangePassword,
+      isSeed: item.isSeed,
+      lastLoginAt: item.lastLoginAt ? new Date(item.lastLoginAt) : null,
+      createdAt: new Date(item.createdAt),
+      updatedAt: new Date(item.updatedAt),
+    }))).onConflictDoNothing()
+    await tx.insert(userRoles).values(createSeedUserRoles().map((item) => ({
+      userId: item.userId,
+      roleId: item.roleId,
+      assignedAt: new Date(item.assignedAt),
+      assignedBy: item.assignedBy,
+    }))).onConflictDoNothing()
+
     await tx.insert(products).values(seed.products.map((item) => ({
       id: item.id,
       model: item.model,
@@ -153,13 +192,14 @@ try {
     }
   })
 
-  const [[productCount], [relationshipCount], [knowledgeCount], [opportunityCount]] = await Promise.all([
+  const [[productCount], [relationshipCount], [knowledgeCount], [opportunityCount], [userCount]] = await Promise.all([
     db.select({ value: count() }).from(products),
     db.select({ value: count() }).from(relationships),
     db.select({ value: count() }).from(knowledgeItems),
     db.select({ value: count() }).from(opportunities),
+    db.select({ value: count() }).from(users),
   ])
-  console.log(`数据库种子完成：产品 ${productCount?.value ?? 0}、关系 ${relationshipCount?.value ?? 0}、知识 ${knowledgeCount?.value ?? 0}、商机 ${opportunityCount?.value ?? 0}`)
+  console.log(`数据库种子完成：用户 ${userCount?.value ?? 0}、产品 ${productCount?.value ?? 0}、关系 ${relationshipCount?.value ?? 0}、知识 ${knowledgeCount?.value ?? 0}、商机 ${opportunityCount?.value ?? 0}`)
 } finally {
   await client.end()
 }

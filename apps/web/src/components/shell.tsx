@@ -6,32 +6,41 @@ import {
   ChevronRight,
   CircleGauge,
   FlaskConical,
+  LogOut,
   Menu,
   Network,
   Radar,
+  Shield,
+  Users,
   X,
 } from 'lucide-react'
 const logoUrl = '/logo.svg'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api } from '../lib/api'
-import type { Health } from '../lib/types'
+import { useAuth } from '../lib/auth'
+import { userRoleLabels } from '../lib/format'
+import type { Health, Permission, PublicUser } from '../lib/types'
 import { ModeBadge } from './ui'
 import { ClockTick } from './console'
 
-const nav = [
-  { to: '/', label: 'Agent 工作台', icon: Bot, key: 'G · 1', end: true },
-  { to: '/dashboard', label: '业务总览', icon: CircleGauge, key: 'G · 2' },
-  { to: '/relationships', label: '关系中心', icon: Network, key: 'G · 3' },
-  { to: '/knowledge', label: '知识库', icon: BookOpenText, key: 'G · 4' },
-  { to: '/opportunities', label: '商机雷达', icon: Radar, key: 'G · 5' },
-  { to: '/analyze', label: '信号研判', icon: FlaskConical, key: 'G · 6' },
-  { to: '/products', label: '产品知识', icon: Boxes, key: 'G · 7' },
+const nav: Array<{ to: string; label: string; icon: typeof Bot; key: string; end?: boolean; permission: Permission }> = [
+  { to: '/', label: 'Agent 工作台', icon: Bot, key: 'G · 1', end: true, permission: 'agent.chat' },
+  { to: '/dashboard', label: '业务总览', icon: CircleGauge, key: 'G · 2', permission: 'dashboard.read' },
+  { to: '/relationships', label: '关系中心', icon: Network, key: 'G · 3', permission: 'relationships.read' },
+  { to: '/knowledge', label: '知识库', icon: BookOpenText, key: 'G · 4', permission: 'knowledge.read' },
+  { to: '/opportunities', label: '商机雷达', icon: Radar, key: 'G · 5', permission: 'opportunities.read' },
+  { to: '/analyze', label: '信号研判', icon: FlaskConical, key: 'G · 6', permission: 'opportunities.analyze' },
+  { to: '/products', label: '产品知识', icon: Boxes, key: 'G · 7', permission: 'products.read' },
+  { to: '/settings/users', label: '用户管理', icon: Users, key: 'G · 8', permission: 'users.read' },
+  { to: '/settings/roles', label: '角色权限', icon: Shield, key: 'G · 9', permission: 'roles.read' },
 ]
 
 export default function Shell() {
   const location = useLocation()
+  const { user, has, isGuest, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [health, setHealth] = useState<Health>()
+  const visibleNav = nav.filter((item) => has(item.permission))
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => undefined)
@@ -81,7 +90,7 @@ export default function Shell() {
           </div>
           <div className="nav-section-label">工作空间</div>
           <nav className="main-nav" aria-label="主导航">
-            {nav.map(({ to, label, icon: Icon, end, key: kbd }) => (
+            {visibleNav.map(({ to, label, icon: Icon, end, key: kbd }) => (
               <NavLink key={to} to={to} end={end} className={({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '')}>
                 <Icon size={17} className="shimmer" />
                 <span>{label}</span>
@@ -91,17 +100,23 @@ export default function Shell() {
             ))}
           </nav>
           <div className="sidebar-spacer" />
+          <div className="user-card">
+            <strong>{user?.displayName ?? '未登录'}</strong>
+            {user && !isGuest ? (
+              <button type="button" className="icon-button" onClick={() => void logout()} aria-label="退出登录">
+                <LogOut size={16} />
+              </button>
+            ) : (
+              <NavLink to="/login" className="text-link">登录</NavLink>
+            )}
+          </div>
           <div className="mode-card">
-            <span className="mode-card-label">
-              <span className="dot-pulse" style={{ width: 5, height: 5, borderRadius: 999, background: 'var(--action)', boxShadow: '0 0 6px var(--action-glow)' }} />
-              当前模式
-            </span>
-            <ModeBadge mode={health?.agentMode ?? 'rules'} />
-            <p>{health?.agentMode === 'smart' || health?.agentMode === 'intelligent' ? '调用大模型工具，研判与建议可解释；关键动作仍需人工确认。' : '规则引擎 + 演示信号，完整流程可用；模型能力未启用或已降级。'}</p>
-            <div className="service-line">
+            <span className="mode-card-inline">
+              <ModeBadge mode={health?.agentMode ?? 'rules'} />
+              <span className="mode-sep" />
               <span className={agentOnline ? 'online-dot' : 'offline-dot'} />
-              接口 {agentOnline ? '正常' : '待连接'}
-            </div>
+              <span className="mode-status">接口 {agentOnline ? '正常' : '待连接'}</span>
+            </span>
           </div>
         </aside>
         {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
@@ -113,9 +128,24 @@ export default function Shell() {
             <span>氢擎 Agent</span>
             <ModeBadge mode={health?.agentMode ?? 'rules'} />
           </div>
-          <div className="page-container"><Outlet /></div>
+          <div className="page-container">
+            {isGuest && (
+              <div className="guest-banner" role="status">
+                <span>当前为游客，只能查看总览、关系、知识、商机和产品。使用 Agent、补充知识或发现商机请先登录。</span>
+                <NavLink to="/login" className="text-link">去登录</NavLink>
+              </div>
+            )}
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
   )
+}
+
+function displayUserRoles(user: PublicUser) {
+  const names = user.roles?.map((item) => item.name) ?? []
+  if (names.length > 1) return `${names[0]} 等 ${names.length} 个`
+  if (names[0]) return names[0]
+  return userRoleLabels[user.role] ?? user.role
 }

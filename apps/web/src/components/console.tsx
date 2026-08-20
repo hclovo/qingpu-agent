@@ -216,8 +216,9 @@ export function ThinkingTrace({
 }: {
   steps: Array<{ label: string; state: 'done' | 'active' | 'pending'; meta?: string }>
 }) {
+  const hasDone = steps.some((s) => s.state === 'done')
   return (
-    <div className="thinking-trace">
+    <div className={`thinking-trace${hasDone ? ' has-done' : ''}`}>
       {steps.map((step, i) => (
         <div key={i} className={`thinking-trace-row ${step.state}`}>
           <span className="step">{step.state === 'done' ? '✓' : i + 1}</span>

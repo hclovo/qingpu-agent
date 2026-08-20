@@ -3,10 +3,12 @@ import type {
   CreateTouchpointInput,
   KnowledgeItem,
   Opportunity,
+  Permission,
   Product,
   Relationship,
   ScoreDimension,
 } from '@qingpu/contracts'
+import { effectivePermissions, sanitizeRolePermissions } from '@qingpu/contracts'
 import { relationshipHealth } from '@qingpu/domain'
 import { and, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm'
 import type { Sql } from 'postgres'
@@ -23,9 +25,16 @@ import {
   products,
   relationships,
   relationshipTags,
+  activityLogs,
+  rolePermissions,
+  roles,
+  sessions,
   sourceEvidences,
   touchpoints,
+  userRoles,
+  users,
 } from '../db/schema/index.js'
+import type { ActivityEntry, StoredRole, StoredSession, StoredUser } from '../auth/types.js'
 import { DuplicateOpportunityError, type BusinessStore, type OpportunityFilters } from './store.js'
 
 const iso = (value: Date) => value.toISOString()
@@ -125,6 +134,7 @@ export class PostgresStore implements BusinessStore {
         nextAction: item.nextAction ?? undefined,
         nextActionAt: optionalIso(item.nextActionAt),
         createdAt: iso(item.createdAt),
+        createdBy: item.createdBy ?? undefined,
       })),
       sourceKind: row.sourceKind,
       isDemo: row.isDemo,
@@ -132,7 +142,7 @@ export class PostgresStore implements BusinessStore {
     }))
   }
 
-  async addTouchpoint(id: string, input: CreateTouchpointInput): Promise<Relationship | undefined> {
+  async addTouchpoint(id: string, input: CreateTouchpointInput, actorUserId?: string): Promise<Relationship | undefined> {
     const updated = await this.db.transaction(async (tx) => {
       const [row] = await tx.select().from(relationships).where(eq(relationships.id, id)).for('update').limit(1)
       if (!row) return false
@@ -170,6 +180,7 @@ export class PostgresStore implements BusinessStore {
         outcome: input.outcome,
         nextAction: input.nextAction,
         nextActionAt,
+        createdBy: actorUserId,
         createdAt: timestamp,
       })
       await tx.update(relationships).set({
@@ -251,12 +262,13 @@ export class PostgresStore implements BusinessStore {
       status: row.status,
       sourceKind: row.sourceKind,
       isDemo: row.isDemo,
+      createdBy: row.createdBy ?? undefined,
       createdAt: iso(row.createdAt),
       updatedAt: iso(row.updatedAt),
     }))
   }
 
-  async createKnowledge(input: CreateKnowledgeInput): Promise<KnowledgeItem> {
+  async createKnowledge(input: CreateKnowledgeInput, actorUserId?: string): Promise<KnowledgeItem> {
     const id = makeId('knowledge')
     const timestamp = new Date()
     const status: KnowledgeItem['status'] = input.type === 'file' && !/\.(txt|md|csv|json)$/iu.test(input.sourcePath ?? '') ? 'pending' : 'ready'
@@ -270,6 +282,7 @@ export class PostgresStore implements BusinessStore {
         sourcePath: input.sourcePath,
         status,
         sourceKind: input.sourceKind,
+        createdBy: actorUserId,
         createdAt: timestamp,
         updatedAt: timestamp,
       })
@@ -383,6 +396,8 @@ export class PostgresStore implements BusinessStore {
         },
         tags: (tagsByOpportunity.get(row.id) ?? []).map((item) => item.tag),
         isDemo: row.isDemo,
+        createdBy: row.createdBy ?? undefined,
+        updatedBy: row.updatedBy ?? undefined,
         createdAt: iso(row.createdAt),
         updatedAt: iso(row.updatedAt),
       }
@@ -410,6 +425,8 @@ export class PostgresStore implements BusinessStore {
           grade: opportunity.grade,
           scoreVersion: opportunity.scoreVersion,
           sourceKind,
+          createdBy: opportunity.createdBy,
+          updatedBy: opportunity.updatedBy,
           createdAt: new Date(opportunity.createdAt),
           updatedAt: new Date(opportunity.updatedAt),
         })
@@ -462,8 +479,8 @@ export class PostgresStore implements BusinessStore {
     return result
   }
 
-  async updateOpportunityStage(id: string, stage: Opportunity['stage']): Promise<Opportunity | undefined> {
-    const [row] = await this.db.update(opportunities).set({ stage, updatedAt: new Date() }).where(eq(opportunities.id, id)).returning({ id: opportunities.id })
+  async updateOpportunityStage(id: string, stage: Opportunity['stage'], actorUserId?: string): Promise<Opportunity | undefined> {
+    const [row] = await this.db.update(opportunities).set({ stage, updatedBy: actorUserId, updatedAt: new Date() }).where(eq(opportunities.id, id)).returning({ id: opportunities.id })
     return row ? this.getOpportunity(id) : undefined
   }
 
@@ -473,5 +490,235 @@ export class PostgresStore implements BusinessStore {
       sql`lower(btrim(${opportunities.title})) = lower(btrim(${title}))`,
     )).limit(1)
     return Boolean(row)
+  }
+
+  async listUsers(): Promise<StoredUser[]> {
+    const rows = await this.db.select().from(users).orderBy(desc(users.createdAt))
+    return rows.map(mapStoredUser)
+  }
+
+  async getUserById(id: string): Promise<StoredUser | undefined> {
+    const [row] = await this.db.select().from(users).where(eq(users.id, id)).limit(1)
+    return row ? mapStoredUser(row) : undefined
+  }
+
+  async getUserByEmail(email: string): Promise<StoredUser | undefined> {
+    const [row] = await this.db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1)
+    return row ? mapStoredUser(row) : undefined
+  }
+
+  async createUser(user: StoredUser): Promise<StoredUser> {
+    const [row] = await this.db.insert(users).values({
+      id: user.id,
+      email: user.email.trim().toLowerCase(),
+      displayName: user.displayName,
+      status: user.status,
+      passwordHash: user.passwordHash,
+      mustChangePassword: user.mustChangePassword,
+      isSeed: user.isSeed,
+      lastLoginAt: user.lastLoginAt ? new Date(user.lastLoginAt) : null,
+      createdAt: new Date(user.createdAt),
+      updatedAt: new Date(user.updatedAt),
+    }).returning()
+    if (!row) throw new Error('用户写入后无法读取')
+    return mapStoredUser(row)
+  }
+
+  async updateUser(id: string, patch: Partial<StoredUser>): Promise<StoredUser | undefined> {
+    const [row] = await this.db.update(users).set({
+      ...(patch.email !== undefined ? { email: patch.email.trim().toLowerCase() } : {}),
+      ...(patch.displayName !== undefined ? { displayName: patch.displayName } : {}),
+      ...(patch.status !== undefined ? { status: patch.status } : {}),
+      ...(patch.passwordHash !== undefined ? { passwordHash: patch.passwordHash } : {}),
+      ...(patch.mustChangePassword !== undefined ? { mustChangePassword: patch.mustChangePassword } : {}),
+      ...(patch.lastLoginAt !== undefined ? { lastLoginAt: patch.lastLoginAt ? new Date(patch.lastLoginAt) : null } : {}),
+      updatedAt: new Date(),
+    }).where(eq(users.id, id)).returning()
+    return row ? mapStoredUser(row) : undefined
+  }
+
+  async listRoles(): Promise<StoredRole[]> {
+    const rows = await this.db.select().from(roles).orderBy(roles.sortOrder, roles.name)
+    return this.hydrateRoles(rows)
+  }
+
+  async getRoleById(id: string): Promise<StoredRole | undefined> {
+    const [row] = await this.db.select().from(roles).where(eq(roles.id, id)).limit(1)
+    return row ? (await this.hydrateRoles([row]))[0] : undefined
+  }
+
+  async getRoleByCode(code: string): Promise<StoredRole | undefined> {
+    const [row] = await this.db.select().from(roles).where(eq(roles.code, code)).limit(1)
+    return row ? (await this.hydrateRoles([row]))[0] : undefined
+  }
+
+  async createRole(role: StoredRole): Promise<StoredRole> {
+    await this.db.transaction(async (tx) => {
+      await tx.insert(roles).values({
+        id: role.id,
+        code: role.code,
+        name: role.name,
+        description: role.description,
+        isSystem: role.isSystem,
+        sortOrder: role.sortOrder,
+        createdAt: new Date(role.createdAt),
+        updatedAt: new Date(role.updatedAt),
+      })
+      if (role.permissions.length) {
+        await tx.insert(rolePermissions).values(role.permissions.map((permission) => ({ roleId: role.id, permission })))
+      }
+    })
+    const created = await this.getRoleById(role.id)
+    if (!created) throw new Error('角色写入后无法读取')
+    return created
+  }
+
+  async updateRole(id: string, patch: Partial<StoredRole>): Promise<StoredRole | undefined> {
+    const existing = await this.getRoleById(id)
+    if (!existing) return undefined
+    await this.db.transaction(async (tx) => {
+      await tx.update(roles).set({
+        ...(patch.name !== undefined ? { name: patch.name } : {}),
+        ...(patch.description !== undefined ? { description: patch.description } : {}),
+        ...(patch.sortOrder !== undefined ? { sortOrder: patch.sortOrder } : {}),
+        updatedAt: new Date(),
+      }).where(eq(roles.id, id))
+      if (patch.permissions) {
+        await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, id))
+        const next = sanitizeRolePermissions(patch.permissions)
+        if (next.length) await tx.insert(rolePermissions).values(next.map((permission) => ({ roleId: id, permission })))
+      }
+    })
+    return this.getRoleById(id)
+  }
+
+  async deleteRole(id: string): Promise<boolean> {
+    const [row] = await this.db.delete(roles).where(eq(roles.id, id)).returning({ id: roles.id })
+    return Boolean(row)
+  }
+
+  async listUserRoleIds(userId: string): Promise<string[]> {
+    const rows = await this.db.select({ roleId: userRoles.roleId }).from(userRoles).where(eq(userRoles.userId, userId))
+    return rows.map((row) => row.roleId)
+  }
+
+  async setUserRoles(userId: string, roleIds: string[], assignedBy?: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.delete(userRoles).where(eq(userRoles.userId, userId))
+      if (!roleIds.length) return
+      await tx.insert(userRoles).values([...new Set(roleIds)].map((roleId) => ({
+        userId,
+        roleId,
+        assignedBy,
+        assignedAt: new Date(),
+      })))
+    })
+  }
+
+  async countUsersWithRole(roleId: string): Promise<number> {
+    const [row] = await this.db.select({ value: sql<number>`count(*)::int` }).from(userRoles).where(eq(userRoles.roleId, roleId))
+    return row?.value ?? 0
+  }
+
+  async countActiveUsersWithPermission(permission: Permission): Promise<number> {
+    const active = await this.db.select({ id: users.id }).from(users).where(eq(users.status, 'active'))
+    const roleRows = await this.listRoles()
+    const assignments = await this.db.select().from(userRoles)
+    const byUser = new Map<string, string[]>()
+    for (const item of assignments) {
+      byUser.set(item.userId, [...(byUser.get(item.userId) ?? []), item.roleId])
+    }
+    return active.filter((user) => {
+      const perms = effectivePermissions(
+        ...(byUser.get(user.id) ?? []).map((roleId) => roleRows.find((role) => role.id === roleId)?.permissions ?? []),
+      )
+      return perms.includes(permission)
+    }).length
+  }
+
+  private async hydrateRoles(rows: Array<typeof roles.$inferSelect>): Promise<StoredRole[]> {
+    if (!rows.length) return []
+    const permissionRows = await this.db.select().from(rolePermissions).where(inArray(rolePermissions.roleId, rows.map((row) => row.id)))
+    const byRole = groupBy(permissionRows, (row) => row.roleId)
+    return rows.map((row) => ({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      description: row.description,
+      isSystem: row.isSystem,
+      sortOrder: row.sortOrder,
+      permissions: sanitizeRolePermissions((byRole.get(row.id) ?? []).map((item) => item.permission)),
+      createdAt: iso(row.createdAt),
+      updatedAt: iso(row.updatedAt),
+    }))
+  }
+
+  async createSession(session: StoredSession): Promise<void> {
+    await this.db.insert(sessions).values({
+      id: session.id,
+      userId: session.userId,
+      tokenHash: session.tokenHash,
+      expiresAt: new Date(session.expiresAt),
+      lastSeenAt: new Date(session.lastSeenAt),
+      userAgent: session.userAgent,
+      ip: session.ip,
+      createdAt: new Date(session.createdAt),
+    })
+  }
+
+  async getSessionByTokenHash(tokenHash: string): Promise<StoredSession | undefined> {
+    const [row] = await this.db.select().from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1)
+    return row ? mapStoredSession(row) : undefined
+  }
+
+  async touchSession(id: string, lastSeenAt: string): Promise<void> {
+    await this.db.update(sessions).set({ lastSeenAt: new Date(lastSeenAt) }).where(eq(sessions.id, id))
+  }
+
+  async deleteSession(id: string): Promise<void> {
+    await this.db.delete(sessions).where(eq(sessions.id, id))
+  }
+
+  async deleteSessionsForUser(userId: string): Promise<void> {
+    await this.db.delete(sessions).where(eq(sessions.userId, userId))
+  }
+
+  async recordActivity(entry: ActivityEntry): Promise<void> {
+    await this.db.insert(activityLogs).values({
+      id: makeId('activity'),
+      actorUserId: entry.actorUserId,
+      action: entry.action,
+      targetType: entry.targetType,
+      targetId: entry.targetId,
+      requestId: entry.requestId,
+    })
+  }
+}
+
+function mapStoredUser(row: typeof users.$inferSelect): StoredUser {
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.displayName,
+    status: row.status,
+    passwordHash: row.passwordHash,
+    mustChangePassword: row.mustChangePassword,
+    isSeed: row.isSeed,
+    lastLoginAt: optionalIso(row.lastLoginAt),
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  }
+}
+
+function mapStoredSession(row: typeof sessions.$inferSelect): StoredSession {
+  return {
+    id: row.id,
+    userId: row.userId,
+    tokenHash: row.tokenHash,
+    expiresAt: iso(row.expiresAt),
+    lastSeenAt: iso(row.lastSeenAt),
+    userAgent: row.userAgent ?? undefined,
+    ip: row.ip ?? undefined,
+    createdAt: iso(row.createdAt),
   }
 }
