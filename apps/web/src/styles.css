@@ -1058,11 +1058,19 @@ label > small { display: block; margin-top: var(--space-2xs); color: var(--ink-s
 
 .citation-list {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2xs);
+  flex-direction: column;
+  gap: 4px;
   margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: 12px;
 }
+.citation-list > span { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); font-weight: 600; }
+.citation-list a { color: var(--action); text-decoration: none; }
+.citation-list a:hover { text-decoration: underline; }
+.citation-list em { color: var(--ink-faint); }
 .citation-list > span {
   display: flex;
   align-items: center;

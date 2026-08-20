@@ -145,7 +145,7 @@ export default function WorkspacePage() {
                       message.text
                     )}
                   </div>
-                  {message.role === 'assistant' && message.trace && (
+                  {message.role === 'assistant' && message.trace && !message.response && (
                     <ThinkingTrace steps={message.trace} />
                   )}
                   {!!message.response?.citations?.length && (
