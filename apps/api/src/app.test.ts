@@ -32,6 +32,8 @@ async function salesAuth(app: ReturnType<typeof createApp>) {
 describe('Hono API', () => {
   beforeEach(() => {
     process.env.AUTH_REQUIRED = 'false'
+    delete process.env.WEB_ORIGIN
+    delete process.env.WEB_ORIGINS
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
     delete process.env.ANTHROPIC_API_KEY
@@ -39,6 +41,8 @@ describe('Hono API', () => {
   })
 
   afterEach(() => {
+    delete process.env.WEB_ORIGIN
+    delete process.env.WEB_ORIGINS
     delete process.env.MASTRA_MODEL
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
@@ -83,6 +87,44 @@ describe('Hono API', () => {
       body: JSON.stringify({ query: '船舶 氢能', days: 90 }),
     })
     expect(discover.status).toBe(403)
+  })
+
+  it('跨域仅允许配置的 Web 域名并正确响应预检请求', async () => {
+    process.env.WEB_ORIGIN = 'https://qingpu-web.vercel.app/'
+    process.env.WEB_ORIGINS = 'https://preview-one.vercel.app, https://preview-two.vercel.app/'
+    const app = createApp()
+
+    for (const origin of [
+      'https://qingpu-web.vercel.app',
+      'https://preview-one.vercel.app',
+      'https://preview-two.vercel.app',
+    ]) {
+      const response = await app.request('/api/health', {
+        method: 'OPTIONS',
+        headers: {
+          origin,
+          'access-control-request-method': 'GET',
+          'access-control-request-headers': 'Content-Type,X-Request-Id',
+        },
+      })
+      expect(response.status).toBe(204)
+      expect(response.headers.get('access-control-allow-origin')).toBe(origin)
+      expect(response.headers.get('access-control-allow-methods')).toContain('GET')
+      expect(response.headers.get('access-control-allow-headers')).toContain('Content-Type')
+      expect(response.headers.get('access-control-allow-headers')).toContain('X-Request-Id')
+      expect(response.headers.get('access-control-max-age')).toBe('86400')
+      expect(response.headers.get('vary')).toContain('Origin')
+    }
+
+    const denied = await app.request('/api/health', {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://attacker.example.com',
+        'access-control-request-method': 'GET',
+      },
+    })
+    expect(denied.status).toBe(204)
+    expect(denied.headers.get('access-control-allow-origin')).toBeNull()
   })
 
   it('可把 OpenAI API Key 与自定义 Base URL 传给 Mastra 模型配置', () => {

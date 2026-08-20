@@ -357,8 +357,10 @@ sequenceDiagram
 
 | 变量 | 必需 | 说明 |
 | --- | --- | --- |
+| `VITE_API_BASE_URL` | Web 生产部署必需 | 独立部署的 API 公开地址，可带或不带 `/api`；在前端构建时注入 |
 | `PORT` | 否 | API 端口，默认 4111 |
-| `WEB_ORIGIN` | 否 | CORS 白名单，默认本地 Web |
+| `WEB_ORIGIN` | API 生产部署必需 | 独立部署的 Web Origin，用作 CORS 白名单；不得包含路径，本地默认 `http://localhost:5173` |
+| `WEB_ORIGINS` | 否 | 额外允许的 Web Origin，多个地址用英文逗号分隔 |
 | `MASTRA_MODEL` | 否 | Model Router 字符串 |
 | `OPENAI_API_KEY` | 使用 OpenAI 时必需 | OpenAI 或兼容服务密钥，仅后端读取，不返回前端 |
 | `OPENAI_BASE_URL` | 否 | OpenAI 兼容服务完整基地址；官方 OpenAI 留空，配置后作为 Mastra 模型的 `url` 传入 |
