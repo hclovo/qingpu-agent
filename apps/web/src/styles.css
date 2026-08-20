@@ -3359,14 +3359,15 @@ label > small { display: block; margin-top: var(--space-2xs); color: var(--ink-s
 }
 .role-pick, .perm-switch {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-  padding: 12px 14px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--surface-2);
   color: var(--ink);
+  font-size: var(--text-xs);
   text-align: left;
   cursor: pointer;
   transition: border-color var(--duration-fast) var(--ease), background var(--duration-fast) var(--ease);
@@ -3377,18 +3378,18 @@ label > small { display: block; margin-top: var(--space-2xs); color: var(--ink-s
   background: var(--action-soft);
 }
 .role-pick:disabled, .perm-switch:disabled { cursor: default; opacity: 0.85; }
-.role-pick strong, .perm-switch strong { display: block; font-size: var(--text-sm); }
-.role-pick small, .perm-switch small { display: block; margin-top: 3px; color: var(--ink-subtle); font-size: 11px; font-weight: 400; }
-.perm-switch .perm-check { margin-left: auto; color: var(--action); flex-shrink: 0; }
+.role-pick strong { display: block; font-size: var(--text-sm); }
+.role-pick small { display: block; margin-top: 3px; color: var(--ink-subtle); font-size: 11px; font-weight: 400; }
+.perm-switch strong { font-size: var(--text-xs); letter-spacing: 0.01em; }
 .switch-track {
   position: relative;
   flex-shrink: 0;
-  width: 36px;
-  height: 20px;
-  margin-top: 2px;
+  width: 28px;
+  height: 16px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: var(--surface-sunken);
+  transition: background var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease);
 }
 .role-pick.on .switch-track, .perm-switch.on .switch-track {
   border-color: var(--action);
@@ -3397,15 +3398,18 @@ label > small { display: block; margin-top: var(--space-2xs); color: var(--ink-s
 .switch-track::after {
   content: '';
   position: absolute;
-  top: 2px;
+  top: 1px;
   left: 2px;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
-  background: #fff;
-  transition: transform var(--duration-fast) var(--ease);
+  background: var(--ink-subtle);
+  transition: transform var(--duration-fast) var(--ease), background var(--duration-fast) var(--ease);
 }
-.role-pick.on .switch-track::after, .perm-switch.on .switch-track::after { transform: translateX(16px); }
+.role-pick.on .switch-track::after, .perm-switch.on .switch-track::after {
+  transform: translateX(12px);
+  background: #fff;
+}
 .rbac-layout {
   display: grid;
   grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);

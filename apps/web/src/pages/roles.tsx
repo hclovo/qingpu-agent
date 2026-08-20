@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, Copy, Plus, Shield, Trash2 } from 'lucide-react'
+import { Copy, Plus, Shield, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Permission, PermissionCatalogGroup, Role } from '../lib/types'
@@ -253,11 +253,7 @@ export default function RolesPage() {
                                 aria-pressed={on}
                               >
                                 <span className="switch-track" aria-hidden="true" />
-                                <span>
-                                  <strong>{item.label}</strong>
-                                  <small>{item.code}</small>
-                                </span>
-                                {on && <Check size={14} className="perm-check" />}
+                                <strong>{item.label}</strong>
                               </button>
                             )
                           })}
