@@ -118,7 +118,7 @@ export default function UsersPage() {
                   <th>账号</th>
                   <th>角色</th>
                   <th>状态</th>
-                  {canManage && <th>操作</th>}
+                  {canManage && <th className="col-ops">操作</th>}
                 </tr>
               </thead>
               <tbody>
@@ -132,27 +132,27 @@ export default function UsersPage() {
                       <div className="role-chips">
                         {(item.roles ?? []).map((role) => <span key={role.id} className="role-chip">{role.name}</span>)}
                         {!item.roles?.length && <span className="role-chip muted">{item.role}</span>}
-                        {canManage && (
-                          <button type="button" className="button ghost tiny" onClick={() => openAssign(item)}>调整角色</button>
-                        )}
                       </div>
                     </td>
                     <td><StatusBadge value={item.status} label={item.status === 'active' ? '启用' : '停用'} /></td>
                     {canManage && (
-                      <td>
-                        <div className="user-actions">
-                          <button className="button ghost small" type="button" onClick={() => {
-                            const password = window.prompt('输入新的初始密码（至少 8 位）')
-                            if (password) void patch(item.id, { password })
-                          }}>重置密码</button>
-                          <button
-                            className="button ghost small"
-                            type="button"
-                            onClick={() => void patch(item.id, { status: item.status === 'active' ? 'disabled' : 'active' })}
-                          >
-                            {item.status === 'active' ? '停用' : '启用'}
-                          </button>
-                        </div>
+                      <td className="col-ops">
+                        {canManage && (
+                          <div className="user-actions">
+                            <button className="button ghost small" type="button" onClick={() => openAssign(item)}>调整角色</button>
+                            <button className="button ghost small" type="button" onClick={() => {
+                              const password = window.prompt('输入新的初始密码（至少 8 位）')
+                              if (password) void patch(item.id, { password })
+                            }}>重置密码</button>
+                            <button
+                              className="button ghost small"
+                              type="button"
+                              onClick={() => void patch(item.id, { status: item.status === 'active' ? 'disabled' : 'active' })}
+                            >
+                              {item.status === 'active' ? '停用' : '启用'}
+                            </button>
+                          </div>
+                        )}
                       </td>
                     )}
                   </tr>
