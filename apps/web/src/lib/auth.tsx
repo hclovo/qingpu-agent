@@ -45,7 +45,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isGuest: user?.role === 'anonymous',
     login: async (email, password) => {
       const result = await api.login(email, password)
-      setUser(result.user)
+      try {
+        const me = await api.me()
+        if (!me.user || me.user.id !== result.user.id || me.user.role === 'anonymous') {
+          setUser(undefined)
+          throw new ApiError('登录没有保持。前后端不在同一站点时，浏览器可能拦截了会话 Cookie。请确认 API 的 WEB_ORIGIN 等于当前网站地址。', 401, 'SESSION_NOT_PERSISTED')
+        }
+        setUser(me.user)
+      } catch (error) {
+        if (error instanceof ApiError && error.code === 'SESSION_NOT_PERSISTED') throw error
+        if (error instanceof ApiError && error.status === 401) {
+          setUser(undefined)
+          throw new ApiError('登录没有保持。请确认 API 的 WEB_ORIGIN 等于当前网站地址，并允许跨站 Cookie。', 401, 'SESSION_NOT_PERSISTED')
+        }
+        setUser(result.user)
+      }
     },
     logout: async () => {
       await api.logout().catch(() => undefined)

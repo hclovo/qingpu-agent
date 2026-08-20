@@ -101,18 +101,49 @@ function clientIp(request: Request) {
   return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || undefined
 }
 
-function writeSessionCookie(c: Context, token: string) {
-  setCookie(c, SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'Lax',
-    path: '/',
-    maxAge: Math.floor(sessionTtlMs() / 1000),
-    secure: process.env.NODE_ENV === 'production',
+function requestHostname(c: Context) {
+  try {
+    return new URL(c.req.url).hostname
+  } catch {
+    return ''
+  }
+}
+
+function isCrossSiteSession(c: Context) {
+  const host = requestHostname(c)
+  if (!host) return false
+  return webOrigins().some((origin) => {
+    try {
+      return new URL(origin).hostname !== host
+    } catch {
+      return false
+    }
   })
 }
 
+function sessionCookieOptions(c: Context) {
+  const crossSite = isCrossSiteSession(c)
+  return {
+    httpOnly: true,
+    path: '/',
+    maxAge: Math.floor(sessionTtlMs() / 1000),
+    secure: crossSite || process.env.NODE_ENV === 'production',
+    sameSite: crossSite ? 'None' as const : 'Lax' as const,
+    partitioned: crossSite || undefined,
+  }
+}
+
+function writeSessionCookie(c: Context, token: string) {
+  setCookie(c, SESSION_COOKIE, token, sessionCookieOptions(c))
+}
+
 function clearSessionCookie(c: Context) {
-  deleteCookie(c, SESSION_COOKIE, { path: '/' })
+  const options = sessionCookieOptions(c)
+  deleteCookie(c, SESSION_COOKIE, {
+    path: options.path,
+    secure: options.secure,
+    sameSite: options.sameSite,
+  })
 }
 
 export function createApp(service = new BusinessService()) {

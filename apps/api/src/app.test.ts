@@ -127,6 +127,24 @@ describe('Hono API', () => {
     expect(denied.headers.get('access-control-allow-origin')).toBeNull()
   })
 
+  it('前后端不同站点时会话 Cookie 使用 SameSite=None', async () => {
+    process.env.WEB_ORIGIN = 'https://qingpu-web.vercel.app'
+    const app = createApp()
+    const response = await app.request('https://qingpu-api.vercel.app/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: 'sales@qingpu.local',
+        password: SEED_USER_PASSWORDS['sales@qingpu.local'],
+      }),
+    })
+    expect(response.status).toBe(200)
+    const cookie = response.headers.get('set-cookie') ?? ''
+    expect(cookie).toMatch(/qingpu_session=/)
+    expect(cookie).toMatch(/SameSite=None/i)
+    expect(cookie).toMatch(/Secure/i)
+  })
+
   it('可把 OpenAI API Key 与自定义 Base URL 传给 Mastra 模型配置', () => {
     process.env.MASTRA_MODEL = 'openai/custom-compatible-model'
     process.env.OPENAI_API_KEY = 'test-only-key'
