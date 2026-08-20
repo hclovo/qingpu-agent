@@ -14,6 +14,11 @@ import type {
 
 type ApiEnvelope<T> = T | { data: T }
 
+const backendUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, '')
+const apiBaseUrl = backendUrl
+  ? backendUrl.endsWith('/api') ? backendUrl : `${backendUrl}/api`
+  : '/api'
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -29,7 +34,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
-    response = await fetch(`/api${path}`, {
+    response = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
       headers: {
         ...(init?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
@@ -37,7 +42,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       },
     })
   } catch {
-    throw new ApiError('无法连接服务，请确认 API 已启动。', 0, 'NETWORK_ERROR')
+    throw new ApiError('无法连接服务，请检查后端地址及服务状态。', 0, 'NETWORK_ERROR')
   }
 
   const payload = (await response.json().catch(() => null)) as

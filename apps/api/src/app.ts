@@ -19,6 +19,28 @@ import { DuplicateOpportunityError } from './store/store.js'
 
 type Variables = { requestId: string }
 
+function webOrigins() {
+  const configured = [process.env.WEB_ORIGIN, process.env.WEB_ORIGINS]
+    .filter(Boolean)
+    .flatMap((value) => value!.split(','))
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  const values = configured.length ? configured : ['http://localhost:5173']
+  return [...new Set(values.map((value) => {
+    let url: URL
+    try {
+      url = new URL(value)
+    } catch {
+      throw new Error(`无效的 Web Origin：${value}`)
+    }
+    if (!['http:', 'https:'].includes(url.protocol) || value.replace(/\/+$/, '') !== url.origin) {
+      throw new Error(`Web Origin 必须是仅含协议、域名和端口的 HTTP(S) 地址：${value}`)
+    }
+    return url.origin
+  }))]
+}
+
 class RequestBodyError extends Error {
   readonly code = 'VALIDATION_ERROR'
 }
@@ -67,6 +89,7 @@ function normalizeContactability(value: unknown) {
 
 export function createApp(service = new BusinessService()) {
   const app = new Hono<{ Variables: Variables }>()
+  const allowedOrigins = webOrigins()
 
   app.use('*', async (c, next) => {
     const requestId = c.req.header('x-request-id') || randomUUID()
@@ -75,9 +98,11 @@ export function createApp(service = new BusinessService()) {
     await next()
   })
   app.use('/api/*', cors({
-    origin: process.env.WEB_ORIGIN?.trim() || 'http://localhost:5173',
+    origin: allowedOrigins,
     allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'X-Request-Id'],
+    exposeHeaders: ['X-Request-Id'],
+    maxAge: 86_400,
   }))
 
   app.onError((error, c) => {

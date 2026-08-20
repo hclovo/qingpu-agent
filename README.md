@@ -62,14 +62,30 @@ pnpm --filter @qingpu/api db:seed     # 幂等写入演示种子
 
 ## Vercel 部署
 
-API 是一个依赖仓库内共享包的 Hono workspace。创建 API 项目时请使用以下设置：
+前后端需要创建为两个独立的 Vercel 项目。
+
+完整操作步骤、环境变量清单、数据库初始化、CORS 验证和故障排查请查看 [Vercel 前后端分离部署指南](./docs/Vercel前后端分离部署指南.md)。
+
+Web 项目设置：
+
+- **Root Directory**：`apps/web`
+- **Framework Preset**：`Vite`
+- 环境变量 `VITE_API_BASE_URL`：API 项目的公开地址，例如 `https://qingpu-api.vercel.app`；可带或不带 `/api`
+
+`VITE_API_BASE_URL` 会在前端构建时写入产物，修改后需要重新部署 Web 项目。本地不配置时仍使用同源 `/api`，由 Vite 开发代理转发到 `http://localhost:4111`。
+
+API 项目设置：
 
 - **Root Directory**：`apps/api`
 - **Framework Preset**：`Hono`（通常会自动识别）
 - **Build Command**：`pnpm build`
 - 在 Root Directory 设置中开启 **Include source files outside of the Root Directory in the Build Step**
+- 环境变量 `WEB_ORIGIN`：Web 生产项目的 Origin，例如 `https://qingpu-web.vercel.app`，不要包含路径或末尾 `/`
+- 可选环境变量 `WEB_ORIGINS`：额外允许的 Web Origin，多个地址用英文逗号分隔，适合固定的预览域名
 
-最后一项必须保持开启，否则 Vercel Function 不会包含 `packages/contracts` 和 `packages/domain`，运行时会出现 `ERR_MODULE_NOT_FOUND: Cannot find package '@qingpu/contracts'`。修改设置后，请在不复用 Build Cache 的情况下重新部署。
+API 只为上述白名单返回跨域响应头，不要配置为 `*` 或宽泛的 `*.vercel.app`。如果前端预览部署也需要访问 API，请把固定的预览别名加入 `WEB_ORIGINS`；变量修改后重新部署 API。
+
+“Include source files outside of the Root Directory” 必须保持开启，否则 Vercel Function 不会包含 `packages/contracts` 和 `packages/domain`，运行时会出现 `ERR_MODULE_NOT_FOUND: Cannot find package '@qingpu/contracts'`。修改设置后，请在不复用 Build Cache 的情况下重新部署。
 
 ## 仓库结构
 
