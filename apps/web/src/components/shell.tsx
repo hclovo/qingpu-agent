@@ -101,10 +101,7 @@ export default function Shell() {
           </nav>
           <div className="sidebar-spacer" />
           <div className="user-card">
-            <div>
-              <strong>{user?.displayName ?? '未登录'}</strong>
-              <span>{user ? displayUserRoles(user) : '访客'}</span>
-            </div>
+            <strong>{user?.displayName ?? '未登录'}</strong>
             {user && !isGuest ? (
               <button type="button" className="icon-button" onClick={() => void logout()} aria-label="退出登录">
                 <LogOut size={16} />
@@ -114,16 +111,12 @@ export default function Shell() {
             )}
           </div>
           <div className="mode-card">
-            <span className="mode-card-label">
-              <span className="dot-pulse" style={{ width: 5, height: 5, borderRadius: 999, background: 'var(--action)', boxShadow: '0 0 6px var(--action-glow)' }} />
-              当前模式
-            </span>
-            <ModeBadge mode={health?.agentMode ?? 'rules'} />
-            <p>{health?.agentMode === 'smart' || health?.agentMode === 'intelligent' ? '调用大模型工具，研判与建议可解释；关键动作仍需人工确认。' : '规则引擎 + 演示信号，完整流程可用；模型能力未启用或已降级。'}</p>
-            <div className="service-line">
+            <span className="mode-card-inline">
+              <ModeBadge mode={health?.agentMode ?? 'rules'} />
+              <span className="mode-sep" />
               <span className={agentOnline ? 'online-dot' : 'offline-dot'} />
-              接口 {agentOnline ? '正常' : '待连接'}
-            </div>
+              <span className="mode-status">接口 {agentOnline ? '正常' : '待连接'}</span>
+            </span>
           </div>
         </aside>
         {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
