@@ -985,7 +985,28 @@ label > small { display: block; margin-top: var(--space-2xs); color: var(--ink-s
   position: absolute;
   top: 0; left: 0; bottom: 0;
   width: 2px;
-  background: linear-gradient(180deg, var(--action), transparent);
+  background: linear-gradient(180deg, var(--line-strong), transparent);
+  border-radius: 1px;
+}
+.thinking-trace::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 32px;
+  border-radius: 1px;
+  background: var(--action);
+  box-shadow: 0 0 10px var(--action-glow), 0 0 2px var(--action);
+  animation: traceFlow 2.4s var(--ease) infinite;
+}
+.thinking-trace.has-done::after { opacity: 1; }
+.thinking-trace:not(.has-done)::after { opacity: 0; }
+
+@keyframes traceFlow {
+  0% { top: -32px; opacity: 0; }
+  8% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { top: calc(100% + 32px); opacity: 0; }
 }
 .thinking-trace-row {
   display: flex;
